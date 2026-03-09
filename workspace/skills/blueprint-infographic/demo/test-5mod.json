@@ -1,0 +1,73 @@
+{
+  "title": "MVP 快速验证法",
+  "subtitle": "用最小成本验证最大假设 — 创业第一课",
+  "theme": "sunset",
+  "modules": [
+    {
+      "slot": "A-01", "type": "flowchart", "span": "wide",
+      "title": "验证五步法",
+      "content": {
+        "steps": [
+          { "label": "定义假设", "desc": "写下你最不确定的一个核心假设", "type": "start" },
+          { "label": "设计实验", "desc": "用最低成本测试这个假设的方法" },
+          { "label": "执行 → 收集", "desc": "48小时内完成实验，收集数据" },
+          { "label": "判断转向?", "desc": "数据支持继续还是推翻假设?", "type": "decision" },
+          { "label": "迭代/转向", "desc": "数据说了算，不是直觉", "type": "end" }
+        ]
+      }
+    },
+    {
+      "slot": "B-02", "type": "matrix",
+      "title": "需求真伪矩阵",
+      "content": {
+        "cells": [
+          { "title": "真需求 × 大市场", "desc": "立刻投入资源，这是你的赛道", "style": "good", "icon": "rocket" },
+          { "title": "真需求 × 小市场", "desc": "可以做，但天花板低，适合 lifestyle business", "style": "highlight", "icon": "target" },
+          { "title": "伪需求 × 大市场", "desc": "最危险的陷阱：市场大不代表需求真", "style": "warn", "icon": "skull" },
+          { "title": "伪需求 × 小市场", "desc": "立刻止损，不要自欺欺人", "style": "bad", "icon": "cross" }
+        ],
+        "axisNote": "横轴：市场规模 | 纵轴：需求真实性"
+      }
+    },
+    {
+      "slot": "C-03", "type": "stats",
+      "title": "关键数据",
+      "content": {
+        "badge": { "name": "MVP", "year": "METRICS" },
+        "metrics": [
+          { "value": "72h", "unit": "最长验证周期", "context": "超过三天的实验就不是 MVP，是产品开发" },
+          { "value": "¥5K", "unit": "最高测试预算", "context": "花更多钱之前先证明假设成立" },
+          { "value": "3", "unit": "最少用户反馈", "context": "三个真实用户的深度反馈胜过百份问卷" }
+        ]
+      }
+    },
+    {
+      "slot": "D-04", "type": "warning",
+      "title": "致命误区",
+      "content": {
+        "headline": "创业者最容易犯的错",
+        "items": [
+          "把「我觉得用户需要」当成验证过的需求——你的直觉不是数据",
+          "MVP 做成了完整产品——验证假设不需要完美体验",
+          "只听朋友说「这个想法不错」——他们在给你面子，不是给你真话",
+          "数据不支持但继续坚持——沉没成本谬误是创业杀手"
+        ],
+        "alert": "风险等级: 极高 — 90% 的创业失败源于验证不充分"
+      }
+    },
+    {
+      "slot": "E-05", "type": "checklist",
+      "title": "启动清单",
+      "content": {
+        "items": [
+          { "text": "写下一个最核心的待验证假设", "status": "pending" },
+          { "text": "设计一个 72 小时内可完成的实验", "status": "pending" },
+          { "text": "找到 3 个目标用户愿意参与测试", "status": "pending" },
+          { "text": "定义「成功」和「失败」的具体标准", "status": "pending" },
+          { "text": "执行实验并记录所有数据", "status": "pending" },
+          { "text": "基于数据做出 Go/No-Go 决策", "status": "pending" }
+        ]
+      }
+    }
+  ]
+}

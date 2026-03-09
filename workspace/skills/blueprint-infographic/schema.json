@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Blueprint Infographic Schema v2",
+  "description": "JSON 数据合约 — AI 内容层 → 模板渲染层",
+  "type": "object",
+  "required": ["title", "modules"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "主标题（中文）"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "副标题（中文，一句话概括核心观点）"
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["ocean", "forest", "sunset", "slate", "blueprint"],
+      "description": "配色主题"
+    },
+    "layout": {
+      "type": "string",
+      "enum": ["banner", "dense", "hero", "mosaic"],
+      "description": "页面布局架构"
+    },
+    "fontStyle": {
+      "type": "string",
+      "enum": ["default", "handwritten"],
+      "description": "字体风格"
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 9,
+      "description": "7个模块最佳（含1个tall+1个wide）",
+      "items": { "$ref": "#/definitions/module" }
+    }
+  },
+  "definitions": {
+    "module": {
+      "type": "object",
+      "required": ["slot", "type", "title", "content"],
+      "properties": {
+        "slot": {
+          "type": "string",
+          "pattern": "^[A-G]-[0-9]{2}$",
+          "description": "模块槽位 ID: A-01, B-05, C-12, D-08, E-03, F-15, G-07"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["matrix", "timeline", "breakdown", "loop", "warning", "stats", "progress", "comparison", "pyramid", "chart", "flowchart", "checklist"]
+        },
+        "title": {
+          "type": "string",
+          "description": "模块标题（中文，3-8字）"
+        },
+        "span": {
+          "type": "string",
+          "enum": ["tall", "wide"],
+          "description": "tall=跨2行（适合breakdown）, wide=跨2列（适合warning）"
+        },
+        "content": {
+          "type": "object",
+          "description": "类型特定内容，见各类型定义"
+        }
+      }
+    },
+    "contentTypes": {
+      "matrix": {
+        "cells": [
+          { "title": "标题", "desc": "描述(20-40字)", "style": "good|bad|warn|highlight", "icon": "SVG图标名" }
+        ],
+        "axisNote": "轴说明(可选)"
+      },
+      "timeline": {
+        "milestones": [
+          { "year": "时间标签", "label": "阶段名", "detail": "说明", "done": true, "active": false }
+        ],
+        "progress": 40,
+        "phases": ["阶段描述1", "阶段描述2"]
+      },
+      "breakdown": {
+        "title": "总标题",
+        "layers": [
+          { "icon": "图标名", "name": "层名", "desc": "描述(15-30字)" }
+        ]
+      },
+      "loop": {
+        "nodes": [
+          { "label": "节点名", "sub": "说明" }
+        ],
+        "center": { "text": "核心观点", "sub": "补充" },
+        "footer": "底部说明"
+      },
+      "warning": {
+        "headline": "警告标题",
+        "items": ["警告项1(20-40字)", "警告项2"],
+        "alert": "系统预警文本"
+      },
+      "stats": {
+        "badge": { "name": "徽章名", "year": "年份/标签" },
+        "metrics": [
+          { "value": "数值", "unit": "单位", "context": "上下文说明" }
+        ]
+      },
+      "progress": {
+        "bars": [
+          { "label": "标签", "value": 85 }
+        ],
+        "summary": [
+          { "value": "汇总值", "label": "汇总说明" }
+        ],
+        "note": "底部注释"
+      },
+      "comparison": {
+        "left": { "title": "左标题", "items": ["项目1", "项目2"] },
+        "right": { "title": "右标题", "items": ["项目1", "项目2"] },
+        "winner": "left|right",
+        "verdict": "结论"
+      },
+      "pyramid": {
+        "levels": [
+          { "name": "层名", "desc": "描述" }
+        ]
+      },
+      "chart": {
+        "type": "line|bar",
+        "points": [
+          { "label": "X轴标签", "y": 100 }
+        ],
+        "note": "图表注释"
+      },
+      "flowchart": {
+        "steps": [
+          { "label": "步骤名", "desc": "说明", "type": "start|end|decision" }
+        ]
+      },
+      "checklist": {
+        "items": [
+          { "text": "检查项", "note": "补充说明", "status": "done|fail|pending" }
+        ]
+      }
+    },
+    "iconNames": ["cross", "check", "warn", "star", "arrow", "skull", "gear", "person", "book", "code", "chart", "target", "lightning", "lock", "rocket", "scissors", "play", "flag", "search"]
+  }
+}

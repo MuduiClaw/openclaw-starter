@@ -1,0 +1,146 @@
+{
+  "title": "「2025行动年」",
+  "subtitle": "AI时代行动指南 — 从被动消费到主动构建的系统方法论",
+  "modules": [
+    {
+      "slot": "A-01",
+      "type": "matrix",
+      "title": "行动矩阵",
+      "content": {
+        "cells": [
+          {
+            "icon": "cross",
+            "title": "看视频学习",
+            "desc": "被动消费=零产出，99%的人困在这个象限",
+            "style": "bad"
+          },
+          {
+            "icon": "check",
+            "title": "动手做产品",
+            "desc": "主动构建=真正技能获取，输出倒逼输入",
+            "style": "good"
+          },
+          {
+            "icon": "warn",
+            "title": "懒惰陷阱(99%)",
+            "desc": "舒适区=技能停滞，看似在学实则原地踏步",
+            "style": "warn"
+          },
+          {
+            "icon": "star",
+            "title": "真正学习(1%)",
+            "desc": "做中学→发现问题→带着问题看→认知升级",
+            "style": "highlight"
+          }
+        ],
+        "axisNote": "横轴: 输入→输出 ｜ 纵轴: 被动→主动"
+      }
+    },
+    {
+      "slot": "B-05",
+      "type": "timeline",
+      "title": "时间刻度",
+      "content": {
+        "milestones": [
+          { "year": "2023", "label": "了解AI", "detail": "初步接触概念", "done": true },
+          { "year": "2024", "label": "看视频", "detail": "大量消费内容", "done": true },
+          { "year": "2025", "label": "行动年 ★", "detail": "转型为行动者", "active": true }
+        ],
+        "progress": 75,
+        "phases": [
+          "0-365天进度追踪",
+          "连续日更180天",
+          "发布第1个产品",
+          "转型产品岗"
+        ]
+      }
+    },
+    {
+      "slot": "C-12",
+      "type": "breakdown",
+      "title": "产品原型·Long Cut",
+      "span": "tall",
+      "content": {
+        "title": "Long Cut产品结构拆解",
+        "layers": [
+          { "icon": "play", "name": "YouTube视频解析", "desc": "自动获取视频内容，提取完整字幕" },
+          { "icon": "person", "name": "读取全文字幕", "desc": "AI识别说话人，分段落结构化" },
+          { "icon": "star", "name": "AI高亮时间点", "desc": "智能标记关键知识点和精华片段" },
+          { "icon": "flag", "name": "精华片段标记", "desc": "可视化标注重点，支持快速跳转" },
+          { "icon": "book", "name": "术语解释", "desc": "实时翻译专业术语，降低理解门槛" },
+          { "icon": "search", "name": "原视频跳转", "desc": "点击任意片段直达原视频对应位置" },
+          { "icon": "scissors", "name": "一键去口水词", "desc": "自动过滤填充词，保留核心内容" }
+        ]
+      }
+    },
+    {
+      "slot": "D-08",
+      "type": "loop",
+      "title": "反馈回路",
+      "content": {
+        "nodes": [
+          { "label": "行动", "sub": "先做起来" },
+          { "label": "反馈", "sub": "获得真实数据" },
+          { "label": "认知更新", "sub": "修正理解" },
+          { "label": "再行动", "sub": "带着问题做" }
+        ],
+        "center": {
+          "text": "做完带着问题看视频，终于理解他们在说什么",
+          "sub": "快速失败=快速学习"
+        },
+        "footer": "迭代次数: ∞ · 每次循环认知升级一层"
+      }
+    },
+    {
+      "slot": "E-03",
+      "type": "warning",
+      "title": "警示区",
+      "span": "wide",
+      "content": {
+        "headline": "默认情况=没人在乎",
+        "items": [
+          "你不发声，世界不会主动来找你——讲错话不可怕，没人知道才可悲",
+          "99%的人停在「看视频」阶段就觉得自己在学习——其实只是娱乐的变体",
+          "完美主义是行动最大的敌人——发布一个60分的产品 > 规划一个100分的产品",
+          "社交隐身的代价远大于偶尔说错话——持续输出才能建立信任和影响力"
+        ],
+        "alert": "系统警告: 社交隐身风险等级 — 危急"
+      }
+    },
+    {
+      "slot": "G-07",
+      "type": "stats",
+      "title": "实验数据",
+      "content": {
+        "badge": {
+          "name": "Hands Dirty Club",
+          "year": "ACTION 2025"
+        },
+        "metrics": [
+          { "value": "500", "unit": "篇内容", "context": "日均1.37篇发布频率" },
+          { "value": "18万", "unit": "粉丝", "context": "从0到18万的增长路径" },
+          { "value": "1.5天", "unit": "每篇发布周期", "context": "持续稳定的输出节奏" }
+        ]
+      }
+    },
+    {
+      "slot": "F-15",
+      "type": "progress",
+      "title": "转化漏斗",
+      "content": {
+        "bars": [
+          { "label": "看视频", "value": 90 },
+          { "label": "学教程", "value": 60 },
+          { "label": "动手做", "value": 28 },
+          { "label": "发内容", "value": 15 },
+          { "label": "做产品", "value": 10 }
+        ],
+        "summary": [
+          { "value": "90%", "label": "停留在看视频阶段" },
+          { "value": "10%", "label": "进入真正的行动" }
+        ],
+        "note": "每一层都在流失 — 行动是最稀缺的能力"
+      }
+    }
+  ]
+}

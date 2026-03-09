@@ -1,0 +1,26 @@
+# TOOLS.md - 能力索引
+
+> 复制为 TOOLS.md 后根据你的实际环境自定义。
+
+## 🔧 CLI 工具
+
+| 工具 | 命令 | 用途 |
+|------|------|------|
+| Claude Code | `claude` | 重构/多文件编辑 |
+| Codex | `codex` | 深度代码任务 |
+| Gemini CLI | `gemini` | 多模态/长上下文 |
+| Oracle | `oracle-gemini` | 审查/评审 |
+
+## 🌐 网络
+
+- **代理**: 根据你的网络环境配置
+
+## 📤 媒体与发布
+
+- **媒体输出**: `~/.openclaw/media/outgoing/`
+
+## 🛠️ 基础设施
+
+- **Guardian**: LaunchAgent 自动恢复
+- **备份**: hourly Git push（配置 `scripts/git_auto_backup.sh`）
+- **Dashboard**: `localhost:3001`

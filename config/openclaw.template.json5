@@ -1,0 +1,132 @@
+// OpenClaw Configuration Template
+// 复制为 ~/.openclaw/openclaw.json 并填入你的 API keys
+// 文档: https://docs.openclaw.ai/gateway/configuration
+{
+  // === 环境变量 ===
+  "env": {
+    "vars": {
+      // LLM Provider (至少填一个)
+      // "ANTHROPIC_API_KEY": "__YOUR_ANTHROPIC_API_KEY__",
+      // "OPENAI_API_KEY": "__YOUR_OPENAI_API_KEY__",
+      // "GOOGLE_API_KEY": "__YOUR_GOOGLE_API_KEY__",
+
+      // Chat Channel (至少填一个)
+      // "DISCORD_BOT_TOKEN": "__YOUR_DISCORD_BOT_TOKEN__",
+      // 飞书在 channels.feishu 中配置
+
+      // 可选
+      // "GITHUB_TOKEN": "__YOUR_GITHUB_TOKEN__"
+    }
+  },
+
+  // === Gateway ===
+  "gateway": {
+    "port": 3456,
+    "mode": "production"
+  },
+
+  // === Agent 默认配置 ===
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6"
+      }
+    }
+  },
+
+  // === 模型配置 ===
+  "models": {
+    "providers": {
+      // Anthropic API Key 模式
+      // "anthropic": { "api": "anthropic" },
+
+      // 或 setup-token 模式（无需 API key）
+      // 用 openclaw models auth setup-token --provider anthropic 配置
+    }
+  },
+
+  // === 记忆系统 ===
+  "memory": {
+    "backend": "qmd",
+    "citations": "auto",
+    "qmd": {
+      "command": "__HOME__/.openclaw/scripts/qmd-safe.sh",
+      "searchMode": "search",
+      "includeDefaultMemory": true,
+      "update": {
+        "interval": "5m",
+        "debounceMs": 15000,
+        "onBoot": true
+      },
+      "limits": {
+        "maxResults": 10,
+        "timeoutMs": 60000
+      }
+    }
+  },
+
+  // === Chat Channels ===
+  "channels": {
+    // Discord
+    // "discord": {
+    //   "allowlist": [{
+    //     "guild": "__YOUR_DISCORD_GUILD_ID__",
+    //     "users": ["__YOUR_DISCORD_USER_ID__"]
+    //   }]
+    // },
+
+    // 飞书
+    // "feishu": {
+    //   "appId": "__YOUR_FEISHU_APP_ID__",
+    //   "appSecret": "__YOUR_FEISHU_APP_SECRET__"
+    // }
+  },
+
+  // === ACP (Coding Agents) ===
+  "acp": {
+    "enabled": true,
+    "dispatch": { "enabled": true },
+    "backend": "acpx",
+    "defaultAgent": "codex",
+    "allowedAgents": ["pi", "claude", "codex", "opencode", "gemini"],
+    "maxConcurrentSessions": 4
+  },
+
+  // === 工具配置 ===
+  "tools": {
+    "profile": "full"
+  },
+
+  // === Skills ===
+  "skills": {
+    "load": { "watch": false },
+    "install": { "nodeManager": "npm" }
+  },
+
+  // === Cron ===
+  "cron": {
+    "maxConcurrentRuns": 3
+  },
+
+  // === 日志 ===
+  "logging": {
+    "level": "info",
+    "file": true,
+    "consoleLevel": "warn"
+  },
+
+  // === Session ===
+  "session": {
+    "dmScope": "user"
+  },
+
+  // === 浏览器 ===
+  "browser": {
+    "enabled": true,
+    "headless": true
+  },
+
+  // === Workspace ===
+  // setup.sh 会自动设置
+  // "workspace": "__HOME__/clawd"
+}

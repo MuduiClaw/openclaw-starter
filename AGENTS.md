@@ -1,0 +1,39 @@
+# AGENTS.md — openclaw-starter
+
+## 项目定位
+OpenClaw Starter Kit：把 battle-tested 的 OpenClaw 全套能力打包成可分发的一键安装包。
+
+## 核心规则
+
+### 安全红线
+- **零 secrets**：仓库内禁止出现任何真实 API key、token、密码。占位符格式 `__YOUR_xxx__`
+- **发版门禁**：`grep -rE '(sk-|AKIA|ghp_|xoxb-|mudui|wangshufu)' --exclude-dir=node_modules` 必须零命中
+- **不含私有文件**：aihub、雪哒、XHS、bitmart 相关内容禁止进入本仓库
+
+### 与 live 环境的关系
+- **只读消费者**：从 `~/clawd` 单向提取通用文件，不反向影响
+- **sync-to-template.sh**：维护者同步工具，白名单机制，只同步通用文件
+- **独立版本**：自己的 VERSION + CHANGELOG，不跟 clawd 版本号
+
+### setup.sh 原则
+- **幂等**：重跑不破坏已有配置
+- **用户配置区不覆盖**：SOUL.md, IDENTITY.md, USER.md, TOOLS.md, MEMORY.md
+- **系统核心区强制覆盖**：scripts/, prompts/, eval/, skills/（覆盖前 .bak 备份）
+- **依赖自动装**：缺啥装啥，用户只需要贴 API key + channel token
+
+### 文件分类
+| 类型 | 文件 | 规则 |
+|------|------|------|
+| 用户自定义 | *.example → 无后缀 | 只首次复制，不覆盖 |
+| 系统核心 | scripts/, prompts/, skills/ | 升级时强制覆盖 + .bak |
+| 配置模板 | openclaw.template.json5 | 全脱敏，变量占位 |
+
+### 验证标准
+- setup.sh 干净环境零报错
+- `openclaw status` = running
+- `curl localhost:3001` = 200
+- `qmd status` ≥ 2 collections
+- secret scan 零命中
+
+## 教训
+（从实践中积累，每次翻车追加）

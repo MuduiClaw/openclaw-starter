@@ -1,0 +1,8 @@
+# Generated output
+output/*.png
+output/*.html
+output/*.json
+output/_tmp_*
+
+# Temp files
+_tmp_*

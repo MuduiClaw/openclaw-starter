@@ -1,0 +1,13 @@
+[project]
+name = "openclaw-mcp-bridge"
+version = "0.1.0"
+description = "Bridges OpenClaw infrastructure to MCP-compatible IDEs via Tailscale"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.9.0",
+    "httpx>=0.28",
+    "html2text>=2024.2",
+]
+
+[project.scripts]
+openclaw-mcp-bridge = "server:main"
