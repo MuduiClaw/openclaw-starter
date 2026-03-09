@@ -22,4 +22,4 @@ if ! command -v uv &>/dev/null; then
   exit 1
 fi
 
-exec uv run server.py --host 0.0.0.0 --port 9100
+exec uv run server.py --sse --port 9100

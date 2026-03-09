@@ -1046,7 +1046,7 @@ if command -v openclaw &>/dev/null; then
 
     # Sync gateway token → dashboard.env (gateway install may auto-generate a token)
     DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
-    GW_TOKEN=$(node -e "try{const c=require('${HOME}/.openclaw/openclaw.json');console.log(c.gateway?.token||'')}catch(e){}" 2>/dev/null)
+    GW_TOKEN=$(python3 -c "import json; c=json.load(open('${HOME}/.openclaw/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token','') or c.get('gateway',{}).get('token',''))" 2>/dev/null)
     if [[ -n "$GW_TOKEN" ]]; then
       echo "export DASHBOARD_TOKEN=${GW_TOKEN}" > "$DASHBOARD_ENV"
       chmod 600 "$DASHBOARD_ENV"
