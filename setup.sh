@@ -182,12 +182,21 @@ step "1/3" "依赖安装 (Dependencies)"
 
 # --- Xcode CLT ---
 if ! xcode-select -p &>/dev/null; then
-  info "Installing Xcode Command Line Tools..."
-  xcode-select --install 2>/dev/null || true
-  # Wait for installation
-  until xcode-select -p &>/dev/null; do
-    sleep 5
-  done
+  info "Installing Xcode Command Line Tools (headless)..."
+  # Headless install via softwareupdate (works over SSH, no GUI needed)
+  touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+  CLT_LABEL=$(softwareupdate -l 2>&1 | grep -m1 "Label:.*Command Line Tools" | sed 's/.*Label: //')
+  if [[ -n "$CLT_LABEL" ]]; then
+    softwareupdate -i "$CLT_LABEL" 2>/dev/null
+  fi
+  rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+  # Fallback to interactive if headless didn't work
+  if ! xcode-select -p &>/dev/null; then
+    xcode-select --install 2>/dev/null || true
+    until xcode-select -p &>/dev/null; do
+      sleep 5
+    done
+  fi
   success "Xcode CLT"
 else
   progress_done "Xcode CLT"
