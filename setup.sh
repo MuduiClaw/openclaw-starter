@@ -274,6 +274,12 @@ else
 fi
 
 # --- npm globals (coding agents + tools) ---
+# Ensure npm global bin is on PATH (covers keg-only node@24)
+NPM_BIN="$(npm config get prefix 2>/dev/null)/bin"
+if [[ -d "$NPM_BIN" ]] && [[ ":$PATH:" != *":$NPM_BIN:"* ]]; then
+  export PATH="$NPM_BIN:$PATH"
+fi
+
 NPM_GLOBALS=(
   "@anthropic-ai/claude-code"
   "@openai/codex"
@@ -630,8 +636,8 @@ const config = {
   tools: { profile: 'full' },
   skills: { load: { watch: false }, install: { nodeManager: 'npm' } },
   cron: { maxConcurrentRuns: 3 },
-  logging: { level: 'info', file: true, consoleLevel: 'warn' },
-  session: { dmScope: 'user' },
+  logging: { level: 'info', file: '${OPENCLAW_STATE}/logs/gateway-audit.log', consoleLevel: 'warn' },
+  session: { dmScope: 'per-channel-peer' },
   browser: { enabled: true, headless: true }
 };
 // Clean up empty fallbacks if no Anthropic
@@ -663,12 +669,19 @@ if ! $SKIP_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
 
   if [ ! -d "$DASHBOARD_DIR" ]; then
-    info "Cloning infra-dashboard..."
+    info "Installing infra-dashboard..."
     mkdir -p "${HOME}/projects"
-    git clone --depth 1 https://github.com/MuduiClaw/infra-dashboard.git "$DASHBOARD_DIR" 2>/dev/null || {
-      warn "Failed to clone infra-dashboard (check network). You can retry later:"
-      warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
-    }
+    # Try git clone first, fall back to tarball download (works better in China)
+    if ! git clone --depth 1 https://github.com/MuduiClaw/infra-dashboard.git "$DASHBOARD_DIR" 2>/dev/null; then
+      info "git clone failed, trying tarball download..."
+      mkdir -p "$DASHBOARD_DIR"
+      curl -sL https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
+        tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null || {
+        rm -rf "$DASHBOARD_DIR"
+        warn "Failed to download infra-dashboard (check network). Retry later:"
+        warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
+      }
+    fi
   fi
 
   if [ -d "$DASHBOARD_DIR" ]; then
