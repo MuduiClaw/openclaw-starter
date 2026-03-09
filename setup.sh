@@ -1044,16 +1044,21 @@ if command -v openclaw &>/dev/null; then
     # Install gateway service (creates LaunchAgent + auto-generates token if missing)
     openclaw gateway install 2>/dev/null || warn "Gateway install failed"
 
-    # Patch gateway plist with PATH (openclaw gateway install doesn't include keg-only paths)
+    # Patch gateway plist with correct PATH (openclaw gateway install inherits shell PATH
+    # which may miss keg-only node paths; we always ensure the correct PATH is set)
     GW_PLIST="${HOME}/Library/LaunchAgents/ai.openclaw.gateway.plist"
     NODE_BIN_DIR="$(dirname "$(command -v node)")"
-    if [ -f "$GW_PLIST" ] && ! grep -q '<key>PATH</key>' "$GW_PLIST"; then
-      # Insert PATH into existing EnvironmentVariables dict
-      sed -i '' "/<key>EnvironmentVariables<\/key>/,/<\/dict>/ {
-        /<\/dict>/ i\\
-    <key>PATH</key>\\
-    <string>${NODE_BIN_DIR}:${HOME}/.bun/bin:${HOME}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-      }" "$GW_PLIST" 2>/dev/null || true
+    CORRECT_PATH="${NODE_BIN_DIR}:${HOME}/.bun/bin:${HOME}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    if [ -f "$GW_PLIST" ]; then
+      python3 -c "
+import plistlib, sys
+with open('$GW_PLIST', 'rb') as f:
+    d = plistlib.load(f)
+env = d.setdefault('EnvironmentVariables', {})
+env['PATH'] = '$CORRECT_PATH'
+with open('$GW_PLIST', 'wb') as f:
+    plistlib.dump(d, f)
+" 2>/dev/null || true
     fi
 
     # Sync gateway token → dashboard.env (gateway install may auto-generate a token)
