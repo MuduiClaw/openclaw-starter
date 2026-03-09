@@ -3,14 +3,18 @@ set -euo pipefail
 
 # ============================================================================
 # OpenClaw Starter Kit — setup.sh
-# Interactive, idempotent installer. User does 3 things:
+# Interactive, idempotent installer. User does 2 things:
 #   1. Run this script
-#   2. Paste Anthropic credential
-#   3. Paste Chat Channel token
+#   2. Paste Chat Channel token (Discord or 飞书)
+# MiniMax M2.5 is built-in as the default model — zero config needed.
+# Optionally bring your own Anthropic key for Claude.
 # Everything else is fully automatic.
 # ============================================================================
 
-STARTER_VERSION="1.0.0"
+STARTER_VERSION="1.1.0"
+
+# --- Built-in MiniMax API Key (free tier for starter kit users) ---
+BUILTIN_MINIMAX_KEY="sk-api-sy1eIogAoAINsuLeRmThFgYG8sxKiX_GiLYsYCGTrGKAGc83KXp58HV8AXVEEo4iw-3UrJ2CAbhA2Xy1Th5P2ANiOcXojh2L4qWkm9Ew29hCKCYfX-T0PVc"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # --- Defaults ---
@@ -402,16 +406,23 @@ fi
 
 if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   echo ""
-  printf "${BOLD}     Anthropic 认证 — 选择方式:${NC}\n"
-  printf "       ${CYAN}1.${NC} API Key (按量付费，需 Anthropic Console 账号)\n"
-  printf "       ${CYAN}2.${NC} setup-token (用 Claude Pro/Max 订阅额度)\n"
-  printf "       ${DIM}       参考: https://docs.openclaw.ai/providers/anthropic${NC}\n"
+  printf "${BOLD}     LLM 模型 — 选择方式:${NC}\n"
+  printf "       ${CYAN}1.${NC} 使用内置 MiniMax M2.5 ${DIM}(免费，开箱即用，推荐)${NC}\n"
+  printf "       ${CYAN}2.${NC} Anthropic API Key ${DIM}(按量付费)${NC}\n"
+  printf "       ${CYAN}3.${NC} Anthropic setup-token ${DIM}(用 Claude Pro/Max 订阅额度)${NC}\n"
+  printf "       ${DIM}       MiniMax: https://docs.openclaw.ai/providers/minimax${NC}\n"
+  printf "       ${DIM}       Anthropic: https://docs.openclaw.ai/providers/anthropic${NC}\n"
   echo ""
   ask "> "
   read -r auth_choice
 
   case "$auth_choice" in
     1)
+      ANTHROPIC_MODE="none"
+      ANTHROPIC_KEY=""
+      success "使用内置 MiniMax M2.5"
+      ;;
+    2)
       ANTHROPIC_MODE="api-key"
       ask "Anthropic API Key (sk-ant-...): "
       read -rs ANTHROPIC_KEY
@@ -419,9 +430,9 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       if [[ ! "$ANTHROPIC_KEY" =~ ^sk-ant- ]]; then
         warn "Key doesn't start with sk-ant-. Are you sure it's correct?"
       fi
-      success "Anthropic API Key"
+      success "Anthropic API Key + MiniMax M2.5 (fallback)"
       ;;
-    2)
+    3)
       ANTHROPIC_MODE="setup-token"
       echo ""
       info "请在另一个终端运行:"
@@ -431,14 +442,12 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ask "Setup Token: "
       read -rs ANTHROPIC_KEY
       echo ""
-      success "Anthropic Setup Token"
+      success "Anthropic Setup Token + MiniMax M2.5 (fallback)"
       ;;
     *)
-      warn "Invalid choice, defaulting to API Key"
-      ANTHROPIC_MODE="api-key"
-      ask "Anthropic API Key: "
-      read -rs ANTHROPIC_KEY
-      echo ""
+      ANTHROPIC_MODE="none"
+      ANTHROPIC_KEY=""
+      success "使用内置 MiniMax M2.5"
       ;;
   esac
 
@@ -496,20 +505,16 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   # ========================================================================
   info "Generating configuration..."
 
-  NODE_BIN="$(dirname "$(command -v node)")"
-
-  # Build env.vars
-  ENV_VARS="{"
+  # Build env.vars — always include MiniMax
+  ENV_VARS="{\"MINIMAX_API_KEY\": \"${BUILTIN_MINIMAX_KEY}\""
   if [[ "$ANTHROPIC_MODE" == "api-key" ]] && [[ -n "$ANTHROPIC_KEY" ]]; then
-    ENV_VARS+="\"ANTHROPIC_API_KEY\": \"${ANTHROPIC_KEY}\""
+    ENV_VARS+=",\"ANTHROPIC_API_KEY\": \"${ANTHROPIC_KEY}\""
   fi
   if [[ "$CHANNEL_TYPE" == "discord" ]] && [[ -n "$DISCORD_TOKEN" ]]; then
-    [[ "$ENV_VARS" != "{" ]] && ENV_VARS+=","
-    ENV_VARS+="\"DISCORD_BOT_TOKEN\": \"${DISCORD_TOKEN}\""
+    ENV_VARS+=",\"DISCORD_BOT_TOKEN\": \"${DISCORD_TOKEN}\""
   fi
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    [[ "$ENV_VARS" != "{" ]] && ENV_VARS+=","
-    ENV_VARS+="\"GITHUB_TOKEN\": \"${GITHUB_TOKEN}\""
+    ENV_VARS+=",\"GITHUB_TOKEN\": \"${GITHUB_TOKEN}\""
   fi
   ENV_VARS+="}"
 
@@ -533,8 +538,14 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   fi
   CHANNELS+="}"
 
-  # Build models block
-  MODELS="{\"providers\": {}}"
+  # Determine primary model + fallback based on auth choice
+  if [[ "$ANTHROPIC_MODE" != "none" ]] && [[ -n "$ANTHROPIC_KEY" ]]; then
+    PRIMARY_MODEL="anthropic/claude-sonnet-4-6"
+    FALLBACK_LINE="fallbacks: ['minimax/MiniMax-M2.5'],"
+  else
+    PRIMARY_MODEL="minimax/MiniMax-M2.5"
+    FALLBACK_LINE=""
+  fi
 
   # Generate openclaw.json using node for proper JSON
   node -e "
@@ -542,9 +553,43 @@ const config = {
   env: { vars: ${ENV_VARS} },
   gateway: { port: 3456 },
   agents: {
-    defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } }
+    defaults: {
+      model: {
+        primary: '${PRIMARY_MODEL}',
+        ${FALLBACK_LINE}
+      }
+    }
   },
-  models: ${MODELS},
+  models: {
+    mode: 'merge',
+    providers: {
+      minimax: {
+        baseUrl: 'https://api.minimax.io/anthropic',
+        apiKey: '\${MINIMAX_API_KEY}',
+        api: 'anthropic-messages',
+        models: [
+          {
+            id: 'MiniMax-M2.5',
+            name: 'MiniMax M2.5',
+            reasoning: true,
+            input: ['text'],
+            cost: { input: 0.3, output: 1.2, cacheRead: 0.03, cacheWrite: 0.12 },
+            contextWindow: 200000,
+            maxTokens: 8192,
+          },
+          {
+            id: 'MiniMax-M2.5-highspeed',
+            name: 'MiniMax M2.5 Highspeed',
+            reasoning: true,
+            input: ['text'],
+            cost: { input: 0.3, output: 1.2, cacheRead: 0.03, cacheWrite: 0.12 },
+            contextWindow: 200000,
+            maxTokens: 8192,
+          },
+        ],
+      },
+    },
+  },
   memory: {
     backend: 'qmd',
     citations: 'auto',
@@ -572,6 +617,8 @@ const config = {
   session: { dmScope: 'user' },
   browser: { enabled: true, headless: true }
 };
+// Clean up empty fallbacks if no Anthropic
+if (!config.agents.defaults.model.fallbacks) delete config.agents.defaults.model.fallbacks;
 process.stdout.write(JSON.stringify(config, null, 2));
 " > "$EXISTING_CONFIG"
 
@@ -594,24 +641,25 @@ fi  # end SKIP_CONFIG
 # ============================================================================
 step "3/3" "启动 (Launch)"
 
-# --- infra-dashboard ---
+# --- infra-dashboard (auto-install from GitHub) ---
 if ! $SKIP_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
 
-  if [ -d "${SCRIPT_DIR}/projects/infra-dashboard/.git" ]; then
-    # Git submodule present in starter
-    if [ ! -d "$DASHBOARD_DIR" ]; then
-      info "Setting up infra-dashboard..."
-      cd "$SCRIPT_DIR"
-      git submodule update --init projects/infra-dashboard 2>/dev/null || true
-      if [ -d "${SCRIPT_DIR}/projects/infra-dashboard" ]; then
-        cp -a "${SCRIPT_DIR}/projects/infra-dashboard" "$DASHBOARD_DIR"
-      fi
-    fi
+  if [ ! -d "$DASHBOARD_DIR" ]; then
+    info "Cloning infra-dashboard..."
+    mkdir -p "${HOME}/projects"
+    git clone --depth 1 https://github.com/MuduiClaw/infra-dashboard.git "$DASHBOARD_DIR" 2>/dev/null || {
+      warn "Failed to clone infra-dashboard (check network). You can retry later:"
+      warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
+    }
   fi
 
   if [ -d "$DASHBOARD_DIR" ]; then
     cd "$DASHBOARD_DIR"
+
+    # Pull latest if already cloned
+    git pull --ff-only 2>/dev/null || true
+
     if [ ! -d "node_modules" ]; then
       info "Installing dashboard dependencies..."
       npm install --production 2>/dev/null || warn "Dashboard npm install failed"
