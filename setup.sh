@@ -13,7 +13,7 @@ set -uo pipefail
 # Everything else is fully automatic.
 # ============================================================================
 
-STARTER_VERSION="1.2.0"
+STARTER_VERSION="1.3.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

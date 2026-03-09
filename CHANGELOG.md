@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.3.0] - 2026-03-10
+
+### 安全修复
+- **MCP Bridge + Dashboard 绑定 localhost**：不再暴露到局域网（公共 WiFi 安全）
+- **移除硬编码 API Key**：MiniMax key 改为用户交互式输入，不再写死在脚本中
+- **消除模板注入风险**：config 生成从 node -e 迁移到 python3 + 环境变量
+- **GitHub Token 保护**：git clone 改用 `http.extraheader`，不嵌入 URL
+- **Guardian 安全加固**：`shell=False` + `shlex.split`，消除 shell 注入
+
+### 新功能
+- **Guardian Agent**：3 层智能守护（进程/端口检查→doctor 修复→回滚→通知）
+- **Dashboard 配置化**：`~/.config/openclaw/dashboard.config.json` 控制显示的工具/模块/项目
+- **Cron 自动注册**：setup.sh 完成后自动注册 13 个 cron job
+- **LaunchAgent 健康检查脚本**：`check-launchagent-health.sh`
+
+### 改进
+- Dashboard 和 Gateway 安装后自动打开浏览器
+- Oracle 工具加入 dashboard 配置
+- "工程" 模块加入侧边栏配置
+
+### 修复
+- interval-based cron schedules（ms → --every）正确处理
+- Gateway plist PATH 注入（plistlib 可靠替换）
+- Gateway token 同步到 dashboard.env（python3 读取 auth.token）
+- MCP Bridge `--sse` flag（不是 `--host`）
+
 ## [1.2.0] - 2026-03-09
 
 ### 新功能
