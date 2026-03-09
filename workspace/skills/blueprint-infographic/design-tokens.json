@@ -1,0 +1,205 @@
+{
+  "$schema": "Design Tokens for Blueprint Infographic Generator",
+  "$version": "1.0.0",
+  "$note": "Design OS compliant — design decisions separated from implementation. Add themes/fonts/layouts here, renderer auto-picks up.",
+
+  "base": {
+    "$comment": "Shared neutral foundation — all themes inherit this. Colors only for accent positions.",
+    "bg": "#EDE8DC",
+    "grid": "#D0C8BC",
+    "card": "#FFFFFF",
+    "cardAlt": "#F8F6F0",
+    "borderLight": "#D0C8BC",
+    "gray": {
+      "50": "#F8F6F0",
+      "100": "#F0ECE2",
+      "200": "#E0DAD0",
+      "300": "#C8C0B4",
+      "400": "#A09888",
+      "500": "#706860",
+      "600": "#484038"
+    }
+  },
+
+  "themes": {
+    "ocean": {
+      "name": "深海蓝",
+      "description": "Brand primary — matches WeChat blue-book style",
+      "extends": "base",
+      "primary": "#0F4C81",
+      "primaryBg": "#D8E4F0",
+      "primaryLight": "#EDF2F8",
+      "accent": "#2980B9",
+      "accentBg": "#DCE8F4",
+      "accentLight": "#EEF4FC",
+      "warn": "#1B3A6C",
+      "warnBg": "#E0E4EC",
+      "warnLight": "#EDF0F6",
+      "highlight": "#C8960A",
+      "highlightBg": "#FFF4D0",
+      "highlightLight": "#FFFAE4",
+      "headerBg": "#0F4C81",
+      "headerText": "#FFFFFF"
+    },
+    "forest": {
+      "name": "深林绿",
+      "description": "Nature/sustainability topics",
+      "extends": "base",
+      "primary": "#1A5C3A",
+      "primaryBg": "#C8E0D4",
+      "primaryLight": "#E4F0EA",
+      "accent": "#2D6A4F",
+      "accentBg": "#D0E4DA",
+      "accentLight": "#E8F4EE",
+      "warn": "#6B3A20",
+      "warnBg": "#ECE0D4",
+      "warnLight": "#F8F0E8",
+      "highlight": "#C8960A",
+      "highlightBg": "#FFF4D0",
+      "highlightLight": "#FFFAE4",
+      "headerBg": "#1A5C3A",
+      "headerText": "#FFFFFF"
+    },
+    "sunset": {
+      "name": "琥珀橙",
+      "description": "Warm/creative/marketing topics",
+      "extends": "base",
+      "primary": "#A04010",
+      "primaryBg": "#F0D8C0",
+      "primaryLight": "#FBF0E4",
+      "accent": "#C06010",
+      "accentBg": "#F4E0C8",
+      "accentLight": "#FBF2E4",
+      "warn": "#8B2500",
+      "warnBg": "#ECDCCC",
+      "warnLight": "#F8F0E8",
+      "highlight": "#C8960A",
+      "highlightBg": "#FFF4D0",
+      "highlightLight": "#FFFAE4",
+      "headerBg": "#A04010",
+      "headerText": "#FFFFFF"
+    },
+    "slate": {
+      "name": "炭石灰",
+      "description": "Monochrome/professional/corporate topics",
+      "extends": "base",
+      "primary": "#2B2B2B",
+      "primaryBg": "#D0CCC4",
+      "primaryLight": "#E8E4DC",
+      "accent": "#4A5058",
+      "accentBg": "#D8DDE0",
+      "accentLight": "#ECF0F2",
+      "warn": "#5C2020",
+      "warnBg": "#E8DCD8",
+      "warnLight": "#F4EEEC",
+      "highlight": "#C8960A",
+      "highlightBg": "#FFF4D0",
+      "highlightLight": "#FFFAE4",
+      "headerBg": "#2B2B2B",
+      "headerText": "#FFFFFF"
+    },
+    "blueprint": {
+      "name": "蓝图沙",
+      "description": "Original blueprint/technical-drawing aesthetic",
+      "extends": false,
+      "bg": "#E4DED2",
+      "grid": "#C8C3BB",
+      "card": "#FFFFFF",
+      "cardAlt": "#F5F2EA",
+      "borderLight": "#D0C8BC",
+      "gray": {
+        "50": "#F8F6F0",
+        "100": "#F0ECE2",
+        "200": "#E0DAD0",
+        "300": "#C8C0B4",
+        "400": "#A09888",
+        "500": "#786E64",
+        "600": "#504840"
+      },
+      "primary": "#3FA882",
+      "primaryBg": "#72C4AB",
+      "primaryLight": "#B8E4D4",
+      "accent": "#2B7A5E",
+      "accentBg": "#C8E8DC",
+      "accentLight": "#E4F4EC",
+      "warn": "#8B6914",
+      "warnBg": "#F4ECD0",
+      "warnLight": "#FBF6E8",
+      "highlight": "#F0C800",
+      "highlightBg": "#FFF0A0",
+      "highlightLight": "#FFFAE0",
+      "headerBg": "#3FA882",
+      "headerText": "#FFFFFF"
+    }
+  },
+
+  "fonts": {
+    "default": {
+      "name": "技术文档",
+      "family": "Noto Sans SC",
+      "mono": "IBM Plex Mono",
+      "googleFamily": "Noto+Sans+SC:wght@300;400;500;700;900&family=IBM+Plex+Mono:wght@300;400;500;600;700",
+      "localFaces": ""
+    },
+    "handwritten": {
+      "name": "手写笔记",
+      "family": "Xiaolai",
+      "mono": "Caveat",
+      "googleFamily": "Caveat:wght@400;500;600;700",
+      "localFaces": "",
+      "$note": "Xiaolai SC installed at ~/Library/Fonts/XiaolaiSC-Regular.ttf"
+    }
+  },
+
+  "layouts": {
+    "banner": {
+      "name": "经典横幅",
+      "description": "Colored banner header + symmetric 2-column grid",
+      "gridCols": 2,
+      "gap": 12,
+      "padding": "40px 44px",
+      "headerType": "banner",
+      "decorations": ["corners", "rulers", "scatter", "dotgrid", "noise"]
+    },
+    "dense": {
+      "name": "紧凑技术",
+      "description": "Minimal text header + tight 3-column grid + ruler frame",
+      "gridCols": 3,
+      "gap": 8,
+      "padding": "24px 32px",
+      "headerType": "inline",
+      "decorations": ["rulerFrame", "crosshairs", "noise"]
+    },
+    "hero": {
+      "name": "焦点英雄",
+      "description": "Minimal header + first module as full-width hero + grid below",
+      "gridCols": 2,
+      "gap": 12,
+      "padding": "32px 44px",
+      "headerType": "minimal",
+      "decorations": ["corners", "noise"]
+    },
+    "mosaic": {
+      "name": "不对称拼贴",
+      "description": "Thin header strip + asymmetric module sizing via CSS Grid areas",
+      "gridCols": 3,
+      "gap": 10,
+      "padding": "32px 40px",
+      "headerType": "strip",
+      "decorations": ["corners", "dotgrid"]
+    }
+  },
+
+  "constants": {
+    "black": "#2B2B2B",
+    "white": "#FFFFFF",
+    "red": "#C83030",
+    "redBg": "#FDE8E8",
+    "border": "#2B2B2B"
+  },
+
+  "sizes": {
+    "default": { "width": 1200, "height": 1600 },
+    "xhs": { "width": 1080, "height": 1440 }
+  }
+}

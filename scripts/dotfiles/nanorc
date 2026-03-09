@@ -1,0 +1,17 @@
+# OpenClaw Starter — Nano config
+# Better defaults for terminal editing
+
+set autoindent
+set tabsize 2
+set tabstospaces
+set linenumbers
+set mouse
+set smarthome
+set zap
+set afterends
+set atblanks
+set softwrap
+
+# Syntax highlighting
+include "/opt/homebrew/share/nano/*.nanorc" 
+include "/usr/local/share/nano/*.nanorc"

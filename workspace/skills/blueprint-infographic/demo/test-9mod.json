@@ -1,0 +1,123 @@
+{
+  "title": "AI Agent 技术全景",
+  "subtitle": "从基础模型到自主行动 — 2025 AI Agent 生态全解析",
+  "theme": "ocean",
+  "modules": [
+    {
+      "slot": "A-01", "type": "pyramid",
+      "title": "能力金字塔",
+      "content": {
+        "levels": [
+          { "name": "自主决策", "desc": "Agent 独立完成目标拆解、资源分配和优先级排序" },
+          { "name": "工具调用", "desc": "按需选择和组合外部工具链完成子任务" },
+          { "name": "上下文管理", "desc": "长程记忆 + 多轮对话 + 任务状态追踪" },
+          { "name": "基础推理", "desc": "语言理解、逻辑链推导、代码生成" }
+        ]
+      }
+    },
+    {
+      "slot": "B-02", "type": "matrix",
+      "title": "Agent 分类矩阵",
+      "content": {
+        "cells": [
+          { "title": "Copilot", "desc": "人主导 × 窄领域：代码补全、文档辅助", "style": "good", "icon": "code" },
+          { "title": "Assistant", "desc": "人主导 × 宽领域：通用对话、多模态理解", "style": "highlight", "icon": "person" },
+          { "title": "Worker", "desc": "机器主导 × 窄领域：批量数据处理、监控报警", "style": "good", "icon": "gear" },
+          { "title": "Agent", "desc": "机器主导 × 宽领域：自主规划执行完整任务", "style": "warn", "icon": "rocket" }
+        ],
+        "axisNote": "横轴：任务宽度 | 纵轴：自主程度"
+      }
+    },
+    {
+      "slot": "C-03", "type": "timeline",
+      "title": "技术演进",
+      "content": {
+        "milestones": [
+          { "year": "2023", "label": "ChatGPT 插件", "detail": "第一次让 LLM 调用外部工具", "done": true },
+          { "year": "2024", "label": "Agent 框架爆发", "detail": "LangGraph/CrewAI/AutoGen 百花齐放", "done": true },
+          { "year": "2025", "label": "生产级部署", "detail": "从 demo 到真实业务场景落地", "active": true },
+          { "year": "2026", "label": "自主经济体", "detail": "Agent 自主交易、自主协作" }
+        ],
+        "progress": 65
+      }
+    },
+    {
+      "slot": "D-04", "type": "stats",
+      "title": "市场数据",
+      "content": {
+        "badge": { "name": "AGENT", "year": "2025" },
+        "metrics": [
+          { "value": "$47B", "unit": "市场规模", "context": "2025年全球 AI Agent 市场预估值" },
+          { "value": "340%", "unit": "年增长率", "context": "Agent 相关开源项目 Star 增速" },
+          { "value": "12", "unit": "头部框架", "context": "月活跃开发者超过 1 万的框架数" }
+        ]
+      }
+    },
+    {
+      "slot": "E-05", "type": "comparison",
+      "title": "框架对比",
+      "content": {
+        "left": { "title": "LangGraph", "items": ["状态机架构，确定性强", "适合复杂多步骤工作流", "学习曲线陡峭", "社区最大，文档最全"] },
+        "right": { "title": "CrewAI", "items": ["角色扮演多 Agent 协作", "上手简单，概念直观", "灵活性相对受限", "快速原型首选"] },
+        "winner": "left",
+        "verdict": "生产环境选 LangGraph，快速验证选 CrewAI"
+      }
+    },
+    {
+      "slot": "F-06", "type": "loop",
+      "title": "Agent 执行循环",
+      "content": {
+        "nodes": [
+          { "label": "感知", "sub": "接收输入 + 检索上下文" },
+          { "label": "规划", "sub": "任务拆解 + 优先级排序" },
+          { "label": "执行", "sub": "调用工具 + 生成输出" },
+          { "label": "反馈", "sub": "评估结果 + 更新记忆" }
+        ],
+        "center": { "text": "持续学习", "sub": "每次循环都比上次更好" }
+      }
+    },
+    {
+      "slot": "G-07", "type": "chart",
+      "title": "采用趋势",
+      "content": {
+        "type": "bar",
+        "points": [
+          { "label": "编码", "y": 85 },
+          { "label": "数据分析", "y": 70 },
+          { "label": "客服", "y": 62 },
+          { "label": "营销", "y": 48 },
+          { "label": "财务", "y": 30 },
+          { "label": "法务", "y": 18 }
+        ],
+        "note": "企业 Agent 部署渗透率（%）— 编码领域遥遥领先"
+      }
+    },
+    {
+      "slot": "H-08", "type": "warning",
+      "title": "风险提示",
+      "content": {
+        "headline": "Agent 落地的三大坑",
+        "items": [
+          "幻觉传播：Agent 的错误决策会通过工具链放大，一个幻觉可能触发一连串错误操作",
+          "安全边界模糊：自主执行意味着攻击面扩大，prompt injection 可能让 Agent 执行恶意操作",
+          "成本失控：Agent 循环调用 API 的成本远超单次对话，缺乏预算控制机制就是在烧钱"
+        ],
+        "alert": "安全等级: 高 — 生产部署前必须设置熔断和审批机制"
+      }
+    },
+    {
+      "slot": "I-09", "type": "checklist",
+      "title": "部署清单",
+      "content": {
+        "items": [
+          { "text": "定义明确的 Agent 权限边界和操作白名单", "status": "done" },
+          { "text": "实现 API 调用预算上限和熔断机制", "status": "done" },
+          { "text": "搭建人工审批网关处理高风险操作", "status": "pending" },
+          { "text": "建立 Agent 行为日志和可观测性体系", "status": "pending" },
+          { "text": "设计回滚机制应对 Agent 决策错误", "status": "fail" },
+          { "text": "完成安全审计和红队测试", "status": "pending" }
+        ]
+      }
+    }
+  ]
+}

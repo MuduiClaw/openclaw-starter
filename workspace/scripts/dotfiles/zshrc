@@ -1,0 +1,141 @@
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+. "$HOME/.local/bin/env"
+
+# Added by Antigravity
+export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
+# Disabled: Antigravity hijacks Claude Code
+# export ANTHROPIC_API_KEY="<REDACTED>"
+# export ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
+export GITHUB_TOKEN="<REDACTED>"
+export GITHUB_PERSONAL_ACCESS_TOKEN="<REDACTED>"
+export PATH="/opt/homebrew/bin:$PATH"
+
+source ~/clawd/.claw_aliases
+
+# 1Password Service Account Token
+[ -f "$HOME/.op_config" ] && source "$HOME/.op_config"
+source ~/.config/openclaw/1password.env
+
+# OpenClaw: Auto-load 1Password Service Account
+if [ -f ~/.config/openclaw/1password.env ]; then
+    source ~/.config/openclaw/1password.env
+fi
+
+export PATH="$HOME/go/bin:$PATH"
+
+# bun completions
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Android SDK
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+export PATH=$ANDROID_HOME/emulator:$PATH
+export PATH=$ANDROID_HOME/platform-tools:$PATH
+
+# Android SDK (Homebrew)
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export PATH=$ANDROID_HOME/emulator:$PATH
+export PATH=$ANDROID_HOME/platform-tools:$PATH
+export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+# Google Workspace (gog)
+export GOG_KEYRING_BACKEND=file
+export GOG_KEYRING_PASSWORD=gogcli2026
+
+# IPBurger Static Proxy
+# OpenClaw incident fix (2026-02-15): keep proxy scoped to OpenClaw only
+# [ -f "$HOME/.config/proxy.env" ] && source "$HOME/.config/proxy.env"
+
+# OpenClaw Completion
+source "$HOME/.openclaw/completions/openclaw.zsh"
+
+# === agent-worktree BEGIN ===
+# NOTE: Don't use 'path' as variable name - it shadows zsh's $path array
+wt() {
+  local wt_bin path_file target_path snap_cmd
+  if [[ -n "$ZSH_VERSION" ]]; then
+    wt_bin=$(whence -p wt 2>/dev/null)
+  else
+    wt_bin=$(type -P wt 2>/dev/null)
+  fi
+  if [[ -z "$wt_bin" ]]; then
+    echo "wt: binary not found. Install: npm install -g agent-worktree" >&2
+    return 1
+  fi
+  # Pass through if -h/--help anywhere in args
+  case " $* " in
+    *" -h "*|*" --help "*) "$wt_bin" "$@"; return ;;
+  esac
+  # Create temp file for path output (avoids stdout pollution from hooks)
+  path_file="${TMPDIR:-/tmp}/wt-path-$$"
+  case "$1" in
+    cd|main)
+      "$wt_bin" "$@" --path-file "$path_file" || return $?
+      if [[ -f "$path_file" ]]; then
+        target_path=$(<"$path_file"); rm -f "$path_file"; cd "$target_path"
+      fi
+      ;;
+    new)
+      # Check for snap mode (-s/--snap)
+      if [[ " $* " == *" -s "* ]] || [[ " $* " == *" --snap "* ]]; then
+        "$wt_bin" "$@" --path-file "$path_file" || return $?
+        if [[ -f "$path_file" ]]; then
+          target_path="$(head -n1 "$path_file")"
+          snap_cmd="$(tail -n1 "$path_file")"
+          rm -f "$path_file"
+          [[ "$target_path" == "$snap_cmd" ]] && snap_cmd=""
+          [[ -n "$target_path" ]] && cd "$target_path"
+          # Run snap mode loop in shell (preserves TTY)
+          if [[ -n "$snap_cmd" ]]; then
+            while true; do
+              echo "Entering snap mode: $snap_cmd"
+              echo "Worktree: $(basename "$target_path")"
+              echo "---"
+              eval "$snap_cmd"
+              local agent_status=$?
+              if [[ $agent_status -ne 0 ]]; then
+                echo "Agent exited abnormally. Worktree preserved."
+                return $agent_status
+              fi
+              "$wt_bin" snap-continue --path-file "$path_file"
+              local continue_status=$?
+              # 0: done, cd to main; 2: reopen agent; 3: exit, stay in worktree
+              if [[ $continue_status -eq 0 ]] && [[ -f "$path_file" ]]; then
+                target_path=$(<"$path_file"); rm -f "$path_file"; cd "$target_path"
+                break
+              elif [[ $continue_status -eq 3 ]]; then
+                rm -f "$path_file"
+                break
+              elif [[ $continue_status -ne 2 ]]; then
+                rm -f "$path_file"
+                break
+              fi
+            done
+          fi
+        fi
+      else
+        "$wt_bin" "$@" --path-file "$path_file" || return $?
+        if [[ -f "$path_file" ]]; then
+          target_path=$(<"$path_file"); rm -f "$path_file"; cd "$target_path"
+        fi
+      fi
+      ;;
+    rm|mv|merge|clean)
+      "$wt_bin" "$@" --path-file "$path_file" || return $?
+      if [[ -f "$path_file" ]]; then
+        target_path=$(<"$path_file"); rm -f "$path_file"; cd "$target_path"
+      fi
+      ;;
+    *)
+      "$wt_bin" "$@"
+      ;;
+  esac
+}
+# === agent-worktree END ===
