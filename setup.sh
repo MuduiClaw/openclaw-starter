@@ -1102,6 +1102,47 @@ with open('$GW_PLIST', 'wb') as f:
     sleep 3
     if openclaw gateway status 2>/dev/null | grep -qi "running\|online\|ok"; then
       success "Gateway running"
+
+      # Register cron jobs from prompt files
+      CRON_DIR="${WORKSPACE_DIR}/prompts/cron"
+      if [ -d "$CRON_DIR" ]; then
+        CRON_COUNT=0
+        for prompt_file in "$CRON_DIR"/*.prompt.md; do
+          [ -f "$prompt_file" ] || continue
+          # Extract frontmatter fields
+          JOB_NAME=$(sed -n 's/^name: *"\(.*\)"/\1/p' "$prompt_file" | head -1)
+          JOB_CRON=$(sed -n 's/^schedule: *"\(.*\)"/\1/p' "$prompt_file" | head -1)
+          JOB_MODEL=$(sed -n 's/^model: *"\(.*\)"/\1/p' "$prompt_file" | head -1)
+          JOB_TIMEOUT=$(sed -n 's/^timeout: *\([0-9]*\)/\1/p' "$prompt_file" | head -1)
+          JOB_SESSION=$(sed -n 's/^session_target: *"\(.*\)"/\1/p' "$prompt_file" | head -1)
+          JOB_TZ=$(sed -n 's/^schedule_tz: *"\(.*\)"/\1/p' "$prompt_file" | head -1)
+          JOB_ENABLED=$(sed -n 's/^enabled: *\(.*\)/\1/p' "$prompt_file" | head -1)
+
+          [ -z "$JOB_NAME" ] && continue
+          [ -z "$JOB_CRON" ] && continue
+
+          # Read prompt body (everything after second ---)
+          JOB_MESSAGE=$(sed -n '/^---$/,/^---$/!p' "$prompt_file" | tail -n +1)
+          [ -z "$JOB_MESSAGE" ] && JOB_MESSAGE="Run: $JOB_NAME"
+
+          # Build cron add command
+          CRON_ARGS=(
+            --name "$JOB_NAME"
+            --cron "$JOB_CRON"
+            --message "$JOB_MESSAGE"
+            --timeout-seconds "${JOB_TIMEOUT:-300}"
+          )
+          [ -n "$JOB_MODEL" ] && CRON_ARGS+=(--model "$JOB_MODEL")
+          [ -n "$JOB_TZ" ] && CRON_ARGS+=(--tz "$JOB_TZ")
+          [ "$JOB_SESSION" = "isolated" ] && CRON_ARGS+=(--session isolated)
+          [ "$JOB_ENABLED" = "false" ] && CRON_ARGS+=(--disabled)
+
+          if openclaw cron add "${CRON_ARGS[@]}" 2>/dev/null; then
+            CRON_COUNT=$((CRON_COUNT + 1))
+          fi
+        done
+        [ "$CRON_COUNT" -gt 0 ] && success "Registered $CRON_COUNT cron jobs"
+      fi
     else
       warn "Gateway may not have started. Run: openclaw gateway start"
     fi
@@ -1168,11 +1209,18 @@ printf "${BOLD}${GREEN}🎉 你的 AI 合伙人已就绪。${NC}\n"
 echo ""
 printf "   ${BOLD}Workspace:${NC}   %s\n" "$WORKSPACE_DIR"
 printf "   ${BOLD}Config:${NC}      %s\n" "${OPENCLAW_STATE}/openclaw.json"
+printf "   ${BOLD}Control UI:${NC}  ${CYAN}http://localhost:3456${NC}  ${DIM}(跟 AI 对话)${NC}\n"
 
 if [ -d "${HOME}/projects/infra-dashboard" ]; then
-  printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}\n"
+  printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}  ${DIM}(基建监控)${NC}\n"
+fi
 
-  # Auto-open dashboard in browser (authenticate first, then redirect to home)
+# Auto-open both dashboards in browser
+# 1. Control UI (webchat) — gateway's built-in web interface
+open "http://localhost:3456" 2>/dev/null || true
+
+# 2. Infra dashboard — with auth token
+if [ -d "${HOME}/projects/infra-dashboard" ]; then
   DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
   if [ -f "$DASHBOARD_ENV" ]; then
     DASH_TOKEN_VAL=$(grep DASHBOARD_TOKEN "$DASHBOARD_ENV" | sed 's/export DASHBOARD_TOKEN=//')
@@ -1180,6 +1228,14 @@ if [ -d "${HOME}/projects/infra-dashboard" ]; then
       open "http://localhost:3001/?token=${DASH_TOKEN_VAL}" 2>/dev/null || true
     fi
   fi
+fi
+
+# Print gateway token for user to paste into Control UI
+GW_TOKEN_DISPLAY=$(python3 -c "import json; c=json.load(open('${HOME}/.openclaw/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null)
+if [[ -n "$GW_TOKEN_DISPLAY" ]]; then
+  echo ""
+  printf "   ${BOLD}⚡ Gateway Token:${NC} ${CYAN}${GW_TOKEN_DISPLAY}${NC}\n"
+  printf "   ${DIM}   (在 Control UI 里粘贴此 token 即可开始对话)${NC}\n"
 fi
 
 # Show Tailscale info if available
