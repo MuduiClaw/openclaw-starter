@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -127,8 +128,11 @@ log = setup_logger()
 def run_cmd(cmd, timeout=30, cwd=None):
     """执行命令，返回 (returncode, stdout, stderr)"""
     try:
+        # Always use shell=False for security; convert string commands via shlex
+        if isinstance(cmd, str):
+            cmd = shlex.split(cmd)
         r = subprocess.run(
-            cmd, shell=isinstance(cmd, str), capture_output=True,
+            cmd, shell=False, capture_output=True,
             text=True, timeout=timeout, cwd=cwd,
         )
         return r.returncode, r.stdout.strip(), r.stderr.strip()

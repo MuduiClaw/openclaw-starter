@@ -15,8 +15,6 @@ set -uo pipefail
 
 STARTER_VERSION="1.2.0"
 
-# --- Built-in MiniMax API Key (free tier for starter kit users) ---
-BUILTIN_MINIMAX_KEY="sk-api-sy1eIogAoAINsuLeRmThFgYG8sxKiX_GiLYsYCGTrGKAGc83KXp58HV8AXVEEo4iw-3UrJ2CAbhA2Xy1Th5P2ANiOcXojh2L4qWkm9Ew29hCKCYfX-T0PVc"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # --- Defaults ---
@@ -609,20 +607,29 @@ fi
 if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   echo ""
   printf "${BOLD}     LLM 模型 — 选择方式:${NC}\n"
-  printf "       ${CYAN}1.${NC} 使用内置 MiniMax M2.5 ${DIM}(免费，开箱即用，推荐)${NC}\n"
+  printf "       ${CYAN}1.${NC} MiniMax M2.5 ${DIM}(免费额度，推荐新手)${NC}\n"
   printf "       ${CYAN}2.${NC} Anthropic API Key ${DIM}(按量付费)${NC}\n"
   printf "       ${CYAN}3.${NC} Anthropic setup-token ${DIM}(用 Claude Pro/Max 订阅额度)${NC}\n"
-  printf "       ${DIM}       MiniMax: https://docs.openclaw.ai/providers/minimax${NC}\n"
+  printf "       ${DIM}       MiniMax 注册: https://platform.minimax.io (免费送额度)${NC}\n"
   printf "       ${DIM}       Anthropic: https://docs.openclaw.ai/providers/anthropic${NC}\n"
   echo ""
   ask "> "
   read -r auth_choice
 
+  MINIMAX_KEY=""
   case "$auth_choice" in
     1)
       ANTHROPIC_MODE="none"
       ANTHROPIC_KEY=""
-      success "使用内置 MiniMax M2.5"
+      echo ""
+      info "在 https://platform.minimax.io 注册后，进入 API Keys 页面创建 key"
+      ask "MiniMax API Key (sk-...): "
+      read -rs MINIMAX_KEY
+      echo ""
+      if [[ -z "$MINIMAX_KEY" ]]; then
+        fatal "MiniMax API Key 不能为空。请先去 platform.minimax.io 注册获取"
+      fi
+      success "使用 MiniMax M2.5"
       ;;
     2)
       ANTHROPIC_MODE="api-key"
@@ -632,7 +639,12 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       if [[ ! "$ANTHROPIC_KEY" =~ ^sk-ant- ]]; then
         warn "Key doesn't start with sk-ant-. Are you sure it's correct?"
       fi
-      success "Anthropic API Key + MiniMax M2.5 (fallback)"
+      echo ""
+      info "MiniMax M2.5 作为 fallback 模型（可选，回车跳过）"
+      ask "MiniMax API Key (sk-..., 可选): "
+      read -rs MINIMAX_KEY
+      echo ""
+      success "Anthropic API Key${MINIMAX_KEY:+ + MiniMax fallback}"
       ;;
     3)
       ANTHROPIC_MODE="setup-token"
@@ -644,12 +656,25 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ask "Setup Token: "
       read -rs ANTHROPIC_KEY
       echo ""
-      success "Anthropic Setup Token + MiniMax M2.5 (fallback)"
+      echo ""
+      info "MiniMax M2.5 作为 fallback 模型（可选，回车跳过）"
+      ask "MiniMax API Key (sk-..., 可选): "
+      read -rs MINIMAX_KEY
+      echo ""
+      success "Anthropic Setup Token${MINIMAX_KEY:+ + MiniMax fallback}"
       ;;
     *)
       ANTHROPIC_MODE="none"
       ANTHROPIC_KEY=""
-      success "使用内置 MiniMax M2.5"
+      echo ""
+      info "在 https://platform.minimax.io 注册后，进入 API Keys 页面创建 key"
+      ask "MiniMax API Key (sk-...): "
+      read -rs MINIMAX_KEY
+      echo ""
+      if [[ -z "$MINIMAX_KEY" ]]; then
+        fatal "MiniMax API Key 不能为空。请先去 platform.minimax.io 注册获取"
+      fi
+      success "使用 MiniMax M2.5"
       ;;
   esac
 
@@ -736,122 +761,121 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   # ========================================================================
   info "Generating configuration..."
 
-  # Build env.vars — always include MiniMax
-  ENV_VARS="{\"MINIMAX_API_KEY\": \"${BUILTIN_MINIMAX_KEY}\""
-  if [[ "$ANTHROPIC_MODE" == "api-key" ]] && [[ -n "$ANTHROPIC_KEY" ]]; then
-    ENV_VARS+=",\"ANTHROPIC_API_KEY\": \"${ANTHROPIC_KEY}\""
-  fi
-  if [[ "$CHANNEL_TYPE" == "discord" ]] && [[ -n "$DISCORD_TOKEN" ]]; then
-    ENV_VARS+=",\"DISCORD_BOT_TOKEN\": \"${DISCORD_TOKEN}\""
-  fi
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    ENV_VARS+=",\"GITHUB_TOKEN\": \"${GITHUB_TOKEN}\""
-  fi
-  ENV_VARS+="}"
-
-  # Build channels block
-  CHANNELS="{"
-  if [[ "$CHANNEL_TYPE" == "discord" ]]; then
-    CHANNELS+="\"discord\": {"
-    if [[ -n "$DISCORD_GUILD" ]]; then
-      CHANNELS+="\"allowlist\": [{\"guild\": \"${DISCORD_GUILD}\""
-      if [[ -n "$DISCORD_USER" ]]; then
-        CHANNELS+=",\"users\": [\"${DISCORD_USER}\"]"
-      fi
-      CHANNELS+="}]"
-    fi
-    CHANNELS+="}"
-  elif [[ "$CHANNEL_TYPE" == "feishu" ]]; then
-    CHANNELS+="\"feishu\": {"
-    CHANNELS+="\"appId\": \"${FEISHU_APP_ID}\","
-    CHANNELS+="\"appSecret\": \"${FEISHU_APP_SECRET}\""
-    CHANNELS+="}"
-  fi
-  CHANNELS+="}"
-
   # Determine primary model + fallback based on auth choice
   if [[ "$ANTHROPIC_MODE" != "none" ]] && [[ -n "$ANTHROPIC_KEY" ]]; then
     PRIMARY_MODEL="anthropic/claude-sonnet-4-6"
-    FALLBACK_LINE="fallbacks: ['minimax/MiniMax-M2.5'],"
+    if [[ -n "${MINIMAX_KEY:-}" ]]; then
+      FALLBACK_LINE="fallbacks: ['minimax/MiniMax-M2.5'],"
+    else
+      FALLBACK_LINE=""
+    fi
   else
     PRIMARY_MODEL="minimax/MiniMax-M2.5"
     FALLBACK_LINE=""
   fi
 
-  # Generate openclaw.json using node for proper JSON
-  node -e "
-const config = {
-  env: { vars: ${ENV_VARS} },
-  gateway: { port: 3456, mode: 'local' },
-  agents: {
-    defaults: {
-      model: {
-        primary: '${PRIMARY_MODEL}',
-        ${FALLBACK_LINE}
-      }
-    }
-  },
-  models: {
-    mode: 'merge',
-    providers: {
-      minimax: {
-        baseUrl: 'https://api.minimax.io/anthropic',
-        apiKey: '\${MINIMAX_API_KEY}',
-        api: 'anthropic-messages',
-        models: [
-          {
-            id: 'MiniMax-M2.5',
-            name: 'MiniMax M2.5',
-            reasoning: true,
-            input: ['text'],
-            cost: { input: 0.3, output: 1.2, cacheRead: 0.03, cacheWrite: 0.12 },
-            contextWindow: 200000,
-            maxTokens: 8192,
-          },
-          {
-            id: 'MiniMax-M2.5-highspeed',
-            name: 'MiniMax M2.5 Highspeed',
-            reasoning: true,
-            input: ['text'],
-            cost: { input: 0.3, output: 1.2, cacheRead: 0.03, cacheWrite: 0.12 },
-            contextWindow: 200000,
-            maxTokens: 8192,
-          },
+  # Generate openclaw.json using python3 (safe from shell injection)
+  _OC_PRIMARY_MODEL="$PRIMARY_MODEL" \
+  _OC_FALLBACK="${FALLBACK_LINE:+minimax/MiniMax-M2.5}" \
+  _OC_MINIMAX_KEY="${MINIMAX_KEY:-}" \
+  _OC_ANTHROPIC_KEY="${ANTHROPIC_KEY:-}" \
+  _OC_ANTHROPIC_MODE="$ANTHROPIC_MODE" \
+  _OC_DISCORD_TOKEN="${DISCORD_TOKEN:-}" \
+  _OC_DISCORD_GUILD="${DISCORD_GUILD:-}" \
+  _OC_DISCORD_USER="${DISCORD_USER:-}" \
+  _OC_FEISHU_APP_ID="${FEISHU_APP_ID:-}" \
+  _OC_FEISHU_APP_SECRET="${FEISHU_APP_SECRET:-}" \
+  _OC_GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
+  _OC_CHANNEL_TYPE="${CHANNEL_TYPE:-}" \
+  _OC_STATE_DIR="$OPENCLAW_STATE" \
+  python3 -c '
+import json, os
+
+E = os.environ.get
+
+# env vars
+env_vars = {}
+if E("_OC_MINIMAX_KEY"):
+    env_vars["MINIMAX_API_KEY"] = E("_OC_MINIMAX_KEY")
+if E("_OC_ANTHROPIC_MODE") == "api-key" and E("_OC_ANTHROPIC_KEY"):
+    env_vars["ANTHROPIC_API_KEY"] = E("_OC_ANTHROPIC_KEY")
+if E("_OC_DISCORD_TOKEN"):
+    env_vars["DISCORD_BOT_TOKEN"] = E("_OC_DISCORD_TOKEN")
+if E("_OC_GITHUB_TOKEN"):
+    env_vars["GITHUB_TOKEN"] = E("_OC_GITHUB_TOKEN")
+
+# model
+model_block = {"primary": E("_OC_PRIMARY_MODEL")}
+if E("_OC_FALLBACK"):
+    model_block["fallbacks"] = [E("_OC_FALLBACK")]
+
+# minimax provider (only if key provided)
+providers = {}
+if E("_OC_MINIMAX_KEY"):
+    providers["minimax"] = {
+        "baseUrl": "https://api.minimax.io/anthropic",
+        "apiKey": "${MINIMAX_API_KEY}",
+        "api": "anthropic-messages",
+        "models": [
+            {"id": "MiniMax-M2.5", "name": "MiniMax M2.5", "reasoning": True, "input": ["text"],
+             "cost": {"input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.12},
+             "contextWindow": 200000, "maxTokens": 8192},
+            {"id": "MiniMax-M2.5-highspeed", "name": "MiniMax M2.5 Highspeed", "reasoning": True, "input": ["text"],
+             "cost": {"input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.12},
+             "contextWindow": 200000, "maxTokens": 8192},
         ],
-      },
-    },
-  },
-  memory: {
-    backend: 'qmd',
-    citations: 'auto',
-    qmd: {
-      command: '${OPENCLAW_STATE}/scripts/qmd-safe.sh',
-      searchMode: 'search',
-      includeDefaultMemory: true,
-      update: { interval: '5m', debounceMs: 15000, onBoot: true },
-      limits: { maxResults: 10, timeoutMs: 60000 }
     }
-  },
-  channels: ${CHANNELS},
-  acp: {
-    enabled: true,
-    dispatch: { enabled: true },
-    backend: 'acpx',
-    defaultAgent: 'codex',
-    allowedAgents: ['pi', 'claude', 'codex', 'opencode', 'gemini'],
-    maxConcurrentSessions: 4
-  },
-  tools: { profile: 'full' },
-  skills: { load: { watch: false }, install: { nodeManager: 'npm' } },
-  cron: { maxConcurrentRuns: 3 },
-  logging: { level: 'info', file: '${OPENCLAW_STATE}/logs/gateway-audit.log', consoleLevel: 'warn' },
-  session: { dmScope: 'per-channel-peer' },
-  browser: { enabled: true, headless: true }
-};
-// Clean up empty fallbacks if no Anthropic
-if (!config.agents.defaults.model.fallbacks) delete config.agents.defaults.model.fallbacks;
-process.stdout.write(JSON.stringify(config, null, 2));
-" > "$EXISTING_CONFIG"
+
+# channels
+channels = {}
+ch = E("_OC_CHANNEL_TYPE")
+if ch == "discord" and E("_OC_DISCORD_TOKEN"):
+    disc = {}
+    allow = {}
+    if E("_OC_DISCORD_GUILD"):
+        allow["guild"] = E("_OC_DISCORD_GUILD")
+    if E("_OC_DISCORD_USER"):
+        allow["users"] = [E("_OC_DISCORD_USER")]
+    if allow:
+        disc["allowlist"] = [allow]
+    channels["discord"] = disc
+elif ch == "feishu" and E("_OC_FEISHU_APP_ID"):
+    channels["feishu"] = {
+        "appId": E("_OC_FEISHU_APP_ID"),
+        "appSecret": E("_OC_FEISHU_APP_SECRET", ""),
+    }
+
+state = E("_OC_STATE_DIR")
+config = {
+    "env": {"vars": env_vars},
+    "gateway": {"port": 3456, "mode": "local"},
+    "agents": {"defaults": {"model": model_block}},
+    "models": {"mode": "merge", "providers": providers},
+    "memory": {
+        "backend": "qmd", "citations": "auto",
+        "qmd": {
+            "command": f"{state}/scripts/qmd-safe.sh",
+            "searchMode": "search", "includeDefaultMemory": True,
+            "update": {"interval": "5m", "debounceMs": 15000, "onBoot": True},
+            "limits": {"maxResults": 10, "timeoutMs": 60000},
+        },
+    },
+    "channels": channels,
+    "acp": {
+        "enabled": True, "dispatch": {"enabled": True}, "backend": "acpx",
+        "defaultAgent": "codex",
+        "allowedAgents": ["pi", "claude", "codex", "opencode", "gemini"],
+        "maxConcurrentSessions": 4,
+    },
+    "tools": {"profile": "full"},
+    "skills": {"load": {"watch": False}, "install": {"nodeManager": "npm"}},
+    "cron": {"maxConcurrentRuns": 3},
+    "logging": {"level": "info", "file": f"{state}/logs/gateway-audit.log", "consoleLevel": "warn"},
+    "session": {"dmScope": "per-channel-peer"},
+    "browser": {"enabled": True, "headless": True},
+}
+print(json.dumps(config, indent=2))
+' > "$EXISTING_CONFIG"
 
   success "Generated ${EXISTING_CONFIG}"
 
@@ -880,26 +904,26 @@ if ! $SKIP_DASHBOARD; then
     info "Installing infra-dashboard..."
     mkdir -p "${HOME}/projects"
 
-    # Build clone URL (use GitHub token for private repo if available)
+    # Build clone URL (use GitHub token via extraheader — never embed in URL)
     DASH_CLONE_URL="https://github.com/MuduiClaw/infra-dashboard.git"
+    GIT_AUTH_ARGS=()
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-      DASH_CLONE_URL="https://${GITHUB_TOKEN}@github.com/MuduiClaw/infra-dashboard.git"
+      GIT_AUTH_ARGS=(-c "http.extraheader=Authorization: token ${GITHUB_TOKEN}")
     fi
 
     # Also clone shared-ui dependency
     SHARED_UI_DIR="${HOME}/projects/shared-ui"
     SHARED_CLONE_URL="https://github.com/MuduiClaw/shared-ui.git"
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-      SHARED_CLONE_URL="https://${GITHUB_TOKEN}@github.com/MuduiClaw/shared-ui.git"
-    fi
 
     # Try git clone first, fall back to tarball download (works better in China)
-    if ! git clone --depth 1 "$DASH_CLONE_URL" "$DASHBOARD_DIR" 2>/dev/null; then
+    if ! git "${GIT_AUTH_ARGS[@]}" clone --depth 1 "$DASH_CLONE_URL" "$DASHBOARD_DIR" 2>/dev/null; then
       info "git clone failed, trying tarball download..."
-      TARBALL_HEADERS=""
-      [[ -n "${GITHUB_TOKEN:-}" ]] && TARBALL_HEADERS="-H \"Authorization: token ${GITHUB_TOKEN}\""
+      TARBALL_AUTH_ARGS=()
+      if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        TARBALL_AUTH_ARGS=(-H "Authorization: token ${GITHUB_TOKEN}")
+      fi
       mkdir -p "$DASHBOARD_DIR"
-      eval curl -sL $TARBALL_HEADERS https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
+      curl -sL "${TARBALL_AUTH_ARGS[@]}" https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
         tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null || {
         rm -rf "$DASHBOARD_DIR"
         warn "Failed to download infra-dashboard (check network / GitHub token). Retry later:"
@@ -909,7 +933,7 @@ if ! $SKIP_DASHBOARD; then
 
     # Clone shared-ui if not present (infra-dashboard depends on file:../shared-ui)
     if [ ! -d "$SHARED_UI_DIR" ]; then
-      git clone --depth 1 "$SHARED_CLONE_URL" "$SHARED_UI_DIR" 2>/dev/null || \
+      git "${GIT_AUTH_ARGS[@]}" clone --depth 1 "$SHARED_CLONE_URL" "$SHARED_UI_DIR" 2>/dev/null || \
         warn "Failed to clone shared-ui (non-critical)"
     fi
   fi

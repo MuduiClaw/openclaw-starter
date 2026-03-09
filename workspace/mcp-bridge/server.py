@@ -626,7 +626,7 @@ def main():
     """Entry point. --sse --port N --host H"""
     transport = "stdio"
     port = 9100
-    host = "0.0.0.0"
+    host = "127.0.0.1"
 
     args = sys.argv[1:]
     if "--streamable-http" in args:
