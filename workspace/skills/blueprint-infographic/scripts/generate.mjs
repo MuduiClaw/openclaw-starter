@@ -31,7 +31,11 @@ if (!topic) {
 }
 
 // Gemini API
-const GEMINI_KEY = process.env.GEMINI_API_KEY || '***REMOVED***';
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+if (!GEMINI_KEY) {
+  console.error('Error: GEMINI_API_KEY environment variable is required');
+  process.exit(1);
+}
 
 // ── Load structuring prompt ──
 const structPrompt = readFileSync(join(ROOT, 'prompts', 'structuring.md'), 'utf8');
