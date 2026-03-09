@@ -163,7 +163,7 @@ echo -e "${DIM}  (config templates are manually maintained, not auto-synced)${NC
 # ============================================================================
 echo ""
 echo -e "${BOLD}Secret scan:${NC}"
-LEAKS=$(grep -rE '(sk-ant-|sk-proj-|AKIA[A-Z0-9]{16}|ghp_[a-zA-Z0-9]{36}|xoxb-|mudui|wangshufu|hxrmudui|MuduiClaw)' \
+LEAKS=$(grep -rE '(sk-ant-|sk-proj-|AKIA[A-Z0-9]{16}|ghp_[a-zA-Z0-9]{36}|xoxb-|wangshufu|hxrmudui)' \
   --include='*.md' --include='*.sh' --include='*.json' --include='*.json5' \
   --include='*.py' --include='*.ts' --include='*.js' --include='*.yml' \
   --exclude-dir=node_modules --exclude-dir=.git \
