@@ -214,9 +214,15 @@ else
 fi
 
 # --- Node.js ---
+NODE24_BIN="${BREW_PREFIX}/opt/node@24/bin"
 if ! command -v node &>/dev/null; then
   info "Installing Node.js..."
   brew install node@24
+  export PATH="${NODE24_BIN}:$PATH"
+  hash -r
+  if ! command -v node &>/dev/null; then
+    fatal "Node.js installed but not on PATH. Try: export PATH=\"${NODE24_BIN}:\$PATH\""
+  fi
   success "Node.js $(node --version)"
 else
   NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
@@ -224,6 +230,8 @@ else
     warn "Node.js v${NODE_VERSION} detected, v20+ recommended"
     info "Installing Node.js 24..."
     brew install node@24
+    export PATH="${NODE24_BIN}:$PATH"
+    hash -r
     success "Node.js $(node --version)"
   else
     progress_done "Node.js $(node --version)"
