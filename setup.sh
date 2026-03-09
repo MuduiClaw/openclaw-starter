@@ -1128,10 +1128,22 @@ with open('$GW_PLIST', 'wb') as f:
           # Build cron add command
           CRON_ARGS=(
             --name "$JOB_NAME"
-            --cron "$JOB_CRON"
             --message "$JOB_MESSAGE"
             --timeout-seconds "${JOB_TIMEOUT:-300}"
           )
+
+          # Determine schedule type: cron expression vs interval (ms)
+          if echo "$JOB_CRON" | grep -qE '^[0-9]+$'; then
+            # Pure number = interval in ms, convert to duration
+            INTERVAL_SEC=$((JOB_CRON / 1000))
+            if [ "$INTERVAL_SEC" -ge 60 ]; then
+              CRON_ARGS+=(--every "$((INTERVAL_SEC / 60))m")
+            else
+              CRON_ARGS+=(--every "${INTERVAL_SEC}s")
+            fi
+          else
+            CRON_ARGS+=(--cron "$JOB_CRON")
+          fi
           [ -n "$JOB_MODEL" ] && CRON_ARGS+=(--model "$JOB_MODEL")
           [ -n "$JOB_TZ" ] && CRON_ARGS+=(--tz "$JOB_TZ")
           [ "$JOB_SESSION" = "isolated" ] && CRON_ARGS+=(--session isolated)
