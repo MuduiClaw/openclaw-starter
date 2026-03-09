@@ -287,7 +287,6 @@ NPM_GLOBALS=(
   "@steipete/oracle"
   "mcporter"
   "clawhub"
-  "qmd"
   "playwright"
 )
 
@@ -316,6 +315,48 @@ if ! npm ls -g @upstash/context7-mcp &>/dev/null 2>&1; then
   npm i -g @upstash/context7-mcp 2>/dev/null || true
 fi
 progress_done "MCP servers"
+
+# --- qmd (semantic memory search — installed from source, needs bun) ---
+QMD_DIR="${BREW_PREFIX}/lib/qmd"
+if ! command -v qmd &>/dev/null; then
+  # Install bun if missing
+  if ! command -v bun &>/dev/null; then
+    info "Installing bun (for qmd)..."
+    curl -fsSL https://bun.sh/install | bash 2>/dev/null || true
+    export PATH="$HOME/.bun/bin:$PATH"
+  fi
+
+  if command -v bun &>/dev/null; then
+    info "Installing qmd (semantic search)..."
+    if [ ! -d "$QMD_DIR" ]; then
+      git clone --depth 1 https://github.com/tobi/qmd.git "$QMD_DIR" 2>/dev/null || \
+        (mkdir -p "$QMD_DIR" && curl -sL https://api.github.com/repos/tobi/qmd/tarball/main | \
+          tar xz --strip-components=1 -C "$QMD_DIR" 2>/dev/null) || true
+    fi
+    if [ -d "$QMD_DIR" ]; then
+      cd "$QMD_DIR"
+      bun install 2>/dev/null || true
+      # Create global bin wrapper
+      QMD_BIN="${BREW_PREFIX}/bin/qmd"
+      if [ ! -f "$QMD_BIN" ]; then
+        cat > "$QMD_BIN" << 'QBIN'
+#!/bin/bash
+exec bun run __QMD_DIR__/src/qmd.ts "$@"
+QBIN
+        sed -i '' "s|__QMD_DIR__|${QMD_DIR}|g" "$QMD_BIN"
+        chmod +x "$QMD_BIN"
+      fi
+      cd "$SCRIPT_DIR"
+      success "qmd"
+    else
+      warn "qmd install failed (non-critical)"
+    fi
+  else
+    warn "bun not available — qmd skipped (non-critical)"
+  fi
+else
+  progress_done "qmd"
+fi
 
 # ============================================================================
 # STEP 2: WORKSPACE DEPLOYMENT
