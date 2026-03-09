@@ -1,5 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
+# Note: intentionally NO `set -e` — installer needs graceful degradation
+# (e.g., qmd failing shouldn't prevent gateway startup)
 
 # ============================================================================
 # OpenClaw Starter Kit — setup.sh
@@ -11,7 +13,7 @@ set -euo pipefail
 # Everything else is fully automatic.
 # ============================================================================
 
-STARTER_VERSION="1.1.0"
+STARTER_VERSION="1.2.0"
 
 # --- Built-in MiniMax API Key (free tier for starter kit users) ---
 BUILTIN_MINIMAX_KEY="sk-api-sy1eIogAoAINsuLeRmThFgYG8sxKiX_GiLYsYCGTrGKAGc83KXp58HV8AXVEEo4iw-3UrJ2CAbhA2Xy1Th5P2ANiOcXojh2L4qWkm9Ew29hCKCYfX-T0PVc"
@@ -23,6 +25,8 @@ OPENCLAW_STATE="${HOME}/.openclaw"
 NO_LAUNCHAGENTS=false
 UNINSTALL=false
 SKIP_DASHBOARD=false
+NO_TAILSCALE=false
+NO_CAFFEINATE=false
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -53,9 +57,11 @@ while [[ $# -gt 0 ]]; do
     --workspace-dir)   WORKSPACE_DIR="$2"; shift 2 ;;
     --no-launchagents) NO_LAUNCHAGENTS=true; shift ;;
     --skip-dashboard)  SKIP_DASHBOARD=true; shift ;;
+    --no-tailscale)    NO_TAILSCALE=true; shift ;;
+    --no-caffeinate)   NO_CAFFEINATE=true; shift ;;
     --uninstall)       UNINSTALL=true; shift ;;
     --help|-h)
-      echo "Usage: ./setup.sh [--workspace-dir ~/clawd] [--no-launchagents] [--skip-dashboard] [--uninstall]"
+      echo "Usage: ./setup.sh [--workspace-dir ~/clawd] [--no-launchagents] [--skip-dashboard] [--no-tailscale] [--no-caffeinate] [--uninstall]"
       exit 0 ;;
     *) fatal "Unknown flag: $1" ;;
   esac
@@ -70,6 +76,7 @@ if $UNINSTALL; then
   # Unload LaunchAgents
   for plist in ai.openclaw.gateway ai.openclaw.guardian ai.openclaw.backup \
                ai.openclaw.log-rotate ai.openclaw.sessions-prune-cron \
+               ai.openclaw.caffeinate \
                com.openclaw.infra-dashboard com.openclaw.mcp-bridge; do
     plist_path="${HOME}/Library/LaunchAgents/${plist}.plist"
     if [ -f "$plist_path" ]; then
@@ -108,6 +115,36 @@ printf "${DIM}   Battle-tested AI partner setup for macOS${NC}\n\n"
 # STEP 0: PRE-FLIGHT CHECKS
 # ============================================================================
 step "0/3" "环境检查 (Pre-flight)"
+
+# --- Sudo pre-collection (needed for Homebrew, pmset, systemsetup) ---
+info "Some steps require admin privileges (Homebrew, sleep settings, SSH)."
+sudo -v 2>/dev/null || true
+# Keep sudo alive in background (refresh every 50s, killed on script exit)
+( while true; do sudo -n true 2>/dev/null; sleep 50; done ) &
+SUDO_KEEPALIVE_PID=$!
+trap "kill $SUDO_KEEPALIVE_PID 2>/dev/null" EXIT
+
+# --- System proxy auto-detection (critical for China network) ---
+if [[ -z "${https_proxy:-}" ]] && [[ -z "${HTTPS_PROXY:-}" ]]; then
+  PROXY_HOST=$(scutil --proxy 2>/dev/null | awk '/HTTPSProxy/ {print $3}')
+  PROXY_PORT=$(scutil --proxy 2>/dev/null | awk '/HTTPSPort/ {print $3}')
+  if [[ -n "$PROXY_HOST" ]] && [[ "$PROXY_HOST" != "0" ]]; then
+    export https_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
+    export http_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
+    export HTTPS_PROXY="$https_proxy"
+    export HTTP_PROXY="$http_proxy"
+    info "Detected system proxy: ${PROXY_HOST}:${PROXY_PORT}"
+  fi
+fi
+
+# --- Verify GitHub connectivity (with or without proxy) ---
+if ! curl --connect-timeout 8 -sf https://github.com >/dev/null 2>&1; then
+  warn "GitHub unreachable (even after proxy detection)"
+  warn "如果在中国，建议配置 Homebrew 清华镜像:"
+  warn "  export HOMEBREW_BREW_GIT_REMOTE=https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"
+  warn "  export HOMEBREW_CORE_GIT_REMOTE=https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"
+  warn "Proceeding anyway — some downloads may fail"
+fi
 
 # --- macOS only ---
 if [[ "$(uname)" != "Darwin" ]]; then
@@ -356,6 +393,45 @@ QBIN
   fi
 else
   progress_done "qmd"
+fi
+
+# --- Tailscale (remote access) ---
+if ! $NO_TAILSCALE; then
+  if ! command -v tailscale &>/dev/null; then
+    info "Installing Tailscale (remote access)..."
+    brew install tailscale 2>/dev/null || warn "Tailscale install failed (non-critical)"
+  fi
+  if command -v tailscale &>/dev/null; then
+    # Start Tailscale service
+    brew services start tailscale 2>/dev/null || true
+    # Check if already logged in
+    if ! tailscale status &>/dev/null 2>&1; then
+      echo ""
+      info "下一步将打开浏览器进行 Tailscale 授权"
+      info "完成浏览器中的登录后，返回此窗口继续..."
+      echo ""
+      tailscale login 2>/dev/null || warn "Tailscale login failed — run 'tailscale login' later"
+    fi
+    # Enable Tailscale SSH
+    tailscale set --ssh 2>/dev/null || true
+    TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
+    if [[ -n "$TS_IP" ]]; then
+      progress_done "Tailscale ($TS_IP)"
+    else
+      progress_done "Tailscale (pending login)"
+    fi
+  fi
+else
+  info "Tailscale skipped (--no-tailscale)"
+fi
+
+# --- Enable macOS SSH (Remote Login) ---
+if ! sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
+  info "Enabling macOS Remote Login (SSH)..."
+  sudo systemsetup -setremotelogin on 2>/dev/null || warn "Could not enable SSH — run: sudo systemsetup -setremotelogin on"
+  progress_done "SSH (Remote Login)"
+else
+  progress_done "SSH (Remote Login)"
 fi
 
 # ============================================================================
@@ -877,6 +953,49 @@ if [[ -n "${QMD_PID:-}" ]] && kill -0 "$QMD_PID" 2>/dev/null; then
   wait "$QMD_PID" 2>/dev/null || true
 fi
 
+# --- Anti-sleep configuration (keep Mac alive 24/7) ---
+if ! $NO_CAFFEINATE; then
+  info "Configuring anti-sleep (Mac needs to stay awake for AI partner)..."
+
+  # System-level: disable sleep, keep disk awake, allow display sleep after 10min
+  sudo pmset -a sleep 0 displaysleep 10 disksleep 0 2>/dev/null || \
+    warn "Could not set pmset — run: sudo pmset -a sleep 0 displaysleep 10 disksleep 0"
+
+  # Caffeinate LaunchAgent as double insurance
+  CAFF_PLIST="${HOME}/Library/LaunchAgents/ai.openclaw.caffeinate.plist"
+  if [ ! -f "$CAFF_PLIST" ]; then
+    mkdir -p "${HOME}/Library/LaunchAgents"
+    cat > "$CAFF_PLIST" << 'CAFFEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.openclaw.caffeinate</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-dimsu</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
+CAFFEOF
+    launchctl load -w "$CAFF_PLIST" 2>/dev/null || warn "Could not load caffeinate LaunchAgent"
+  else
+    # Ensure it's loaded
+    launchctl load -w "$CAFF_PLIST" 2>/dev/null || true
+  fi
+
+  progress_done "Anti-sleep (pmset + caffeinate)"
+  info "💡 可选: 安装 Amphetamine (Mac App Store 免费) 做可视化控制"
+else
+  info "Anti-sleep skipped (--no-caffeinate)"
+fi
+
 # ============================================================================
 # COMPLETE
 # ============================================================================
@@ -888,6 +1007,12 @@ printf "   ${BOLD}Config:${NC}      %s\n" "${OPENCLAW_STATE}/openclaw.json"
 
 if [ -d "${HOME}/projects/infra-dashboard" ]; then
   printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}\n"
+fi
+
+# Show Tailscale info if available
+TS_IP_FINAL=$(tailscale ip -4 2>/dev/null || echo "")
+if [[ -n "$TS_IP_FINAL" ]]; then
+  printf "   ${BOLD}Tailscale:${NC}   ${CYAN}ssh $(whoami)@${TS_IP_FINAL}${NC}\n"
 fi
 
 echo ""
