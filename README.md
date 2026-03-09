@@ -48,9 +48,11 @@ cd openclaw-starter
 
 #### 选项 1：MiniMax M2.5（推荐，最快上手）
 
-[MiniMax M2.5](https://www.minimax.io/news/minimax-m25) 是面向编程和复杂任务优化的模型。安装脚本内置了可用的 API Key，**选 1 即可直接用，无需额外注册**。
+[MiniMax M2.5](https://www.minimax.io/news/minimax-m25) 是面向编程和复杂任务优化的模型，**注册即送免费额度**。
 
-如果你想用自己的 key：去 [MiniMax 开放平台](https://platform.minimax.io/) 注册并创建 API Key。
+1. 去 [MiniMax 开放平台](https://platform.minimax.io/) 注册账号
+2. 进入 API Keys 页面创建 key
+3. 安装时粘贴 key
 
 > 对应配置：`minimax/MiniMax-M2.5`（通过 `https://api.minimax.io/anthropic` 兼容接口）
 
