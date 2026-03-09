@@ -712,16 +712,38 @@ if ! $SKIP_DASHBOARD; then
   if [ ! -d "$DASHBOARD_DIR" ]; then
     info "Installing infra-dashboard..."
     mkdir -p "${HOME}/projects"
+
+    # Build clone URL (use GitHub token for private repo if available)
+    DASH_CLONE_URL="https://github.com/MuduiClaw/infra-dashboard.git"
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      DASH_CLONE_URL="https://${GITHUB_TOKEN}@github.com/MuduiClaw/infra-dashboard.git"
+    fi
+
+    # Also clone shared-ui dependency
+    SHARED_UI_DIR="${HOME}/projects/shared-ui"
+    SHARED_CLONE_URL="https://github.com/MuduiClaw/shared-ui.git"
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      SHARED_CLONE_URL="https://${GITHUB_TOKEN}@github.com/MuduiClaw/shared-ui.git"
+    fi
+
     # Try git clone first, fall back to tarball download (works better in China)
-    if ! git clone --depth 1 https://github.com/MuduiClaw/infra-dashboard.git "$DASHBOARD_DIR" 2>/dev/null; then
+    if ! git clone --depth 1 "$DASH_CLONE_URL" "$DASHBOARD_DIR" 2>/dev/null; then
       info "git clone failed, trying tarball download..."
+      TARBALL_HEADERS=""
+      [[ -n "${GITHUB_TOKEN:-}" ]] && TARBALL_HEADERS="-H \"Authorization: token ${GITHUB_TOKEN}\""
       mkdir -p "$DASHBOARD_DIR"
-      curl -sL https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
+      eval curl -sL $TARBALL_HEADERS https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
         tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null || {
         rm -rf "$DASHBOARD_DIR"
-        warn "Failed to download infra-dashboard (check network). Retry later:"
+        warn "Failed to download infra-dashboard (check network / GitHub token). Retry later:"
         warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
       }
+    fi
+
+    # Clone shared-ui if not present (infra-dashboard depends on file:../shared-ui)
+    if [ ! -d "$SHARED_UI_DIR" ]; then
+      git clone --depth 1 "$SHARED_CLONE_URL" "$SHARED_UI_DIR" 2>/dev/null || \
+        warn "Failed to clone shared-ui (non-critical)"
     fi
   fi
 
@@ -733,11 +755,11 @@ if ! $SKIP_DASHBOARD; then
 
     if [ ! -d "node_modules" ]; then
       info "Installing dashboard dependencies..."
-      npm install --production 2>/dev/null || warn "Dashboard npm install failed"
+      npm install 2>/dev/null || warn "Dashboard npm install failed"
     fi
     if [ ! -f ".next/BUILD_ID" ]; then
       info "Building dashboard..."
-      npm run build 2>/dev/null || warn "Dashboard build failed"
+      npm run build 2>/dev/null || warn "Dashboard build failed (non-critical)"
     fi
 
     # Generate dashboard token if missing
