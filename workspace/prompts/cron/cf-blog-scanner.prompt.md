@@ -38,7 +38,7 @@ Step 3) 输出
 - 普通价值：发快报（[博客名] 标题 + 链接 + 1-2 句中文摘要）
 - 高价值（产品发布/战略级/AI 相关）：`sessions_spawn` 深度处理（必须传 model: "sonnet"）
 
-注意：脚本自带 Playwright Chromium，不需要 openclaw browser。扫描 7 个源：BitMart Academy / Bitget / Binance / Phemex Blog + Academy / Gate / KuCoin。（OKX 2026-03-05 暂停：www.okx.com DNS 坏了，OKX 动态由 X watchlist + web search 覆盖）
+注意：脚本自带 Playwright Chromium，不需要 openclaw browser。扫描多个交易所博客源（配置在 scripts/cf-blog-scanner.py 中定义）。
 
 最终仅输出 1 行：
 `CF_SCANNER_DONE new=<数量> sent=<快报数> deep=<spawn数> skipped=<过滤数> errors=<报错博客数>`

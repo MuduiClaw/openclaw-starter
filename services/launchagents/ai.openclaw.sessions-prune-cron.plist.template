@@ -14,7 +14,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>__HOME__/.openclaw/scripts/__SCRIPT__</string>
+        <string>__HOME__/clawd/scripts/sessions-prune.sh</string>
     </array>
     <key>KeepAlive</key>
     <false/>
@@ -22,12 +22,14 @@
     <false/>
     <key>StartCalendarInterval</key>
     <dict>
+        <key>Hour</key>
+        <integer>4</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>__HOME__/.openclaw/logs/__LOG__</string>
+    <string>__HOME__/.openclaw/logs/sessions-prune.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.openclaw/logs/__LOG__</string>
+    <string>__HOME__/.openclaw/logs/sessions-prune.log</string>
 </dict>
 </plist>

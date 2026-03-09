@@ -952,6 +952,17 @@ if ! $SKIP_DASHBOARD; then
   else
     warn "infra-dashboard not found — skipping (you can clone it later)"
   fi
+
+# --- MCP Bridge start script ---
+if [ -f "${SCRIPT_DIR}/services/scripts/start-mcp-bridge.sh" ]; then
+  NODE_BIN_DIR="$(dirname "$(command -v node)")"
+  MCP_START="${OPENCLAW_STATE}/scripts/start-mcp-bridge.sh"
+  sed -e "s|__HOME__|${HOME}|g" \
+      -e "s|__NODE_BIN__|${NODE_BIN_DIR}|g" \
+      "${SCRIPT_DIR}/services/scripts/start-mcp-bridge.sh" > "$MCP_START"
+  chmod +x "$MCP_START"
+  progress_done "MCP bridge start script"
+fi
 else
   info "Dashboard skipped (--skip-dashboard)"
 fi
@@ -1032,6 +1043,16 @@ if command -v openclaw &>/dev/null; then
   if openclaw config validate 2>/dev/null; then
     # Install gateway service (creates LaunchAgent + auto-generates token if missing)
     openclaw gateway install 2>/dev/null || warn "Gateway install failed"
+
+    # Sync gateway token → dashboard.env (gateway install may auto-generate a token)
+    DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
+    GW_TOKEN=$(node -e "try{const c=require('${HOME}/.openclaw/openclaw.json');console.log(c.gateway?.token||'')}catch(e){}" 2>/dev/null)
+    if [[ -n "$GW_TOKEN" ]]; then
+      echo "export DASHBOARD_TOKEN=${GW_TOKEN}" > "$DASHBOARD_ENV"
+      chmod 600 "$DASHBOARD_ENV"
+      success "Dashboard token synced with gateway"
+    fi
+
     info "Starting Gateway..."
     openclaw gateway start 2>/dev/null || warn "Gateway start failed — check: openclaw gateway start"
     sleep 3

@@ -14,20 +14,15 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>__HOME__/.openclaw/scripts/__SCRIPT__</string>
+        <string>__HOME__/.openclaw/scripts/start-mcp-bridge.sh</string>
     </array>
     <key>KeepAlive</key>
-    <false/>
+    <true/>
     <key>RunAtLoad</key>
-    <false/>
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
+    <true/>
     <key>StandardOutPath</key>
-    <string>__HOME__/.openclaw/logs/__LOG__</string>
+    <string>__HOME__/.openclaw/logs/mcp-bridge.log</string>
     <key>StandardErrorPath</key>
-    <string>__HOME__/.openclaw/logs/__LOG__</string>
+    <string>__HOME__/.openclaw/logs/mcp-bridge.log</string>
 </dict>
 </plist>
