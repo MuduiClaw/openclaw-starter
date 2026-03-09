@@ -36,7 +36,7 @@ interface OpItem {
 // ---------------------------------------------------------------------------
 
 /** 1Password vault to use (service accounts require explicit vault). */
-const OP_VAULT = process.env.OP_VAULT || "Server-MacMini";
+const OP_VAULT = process.env.OP_VAULT || "__YOUR_1PASSWORD_VAULT__";
 
 /** Run an `op` command with 1Password env sourced. */
 function runOp(args: string): string {

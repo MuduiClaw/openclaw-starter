@@ -40,7 +40,7 @@ SKILLS_DIRS = [
     Path(os.path.expanduser("~/.agents/skills")),
 ]
 BRAVE_API_KEY = os.environ.get(
-    "BRAVE_API_KEY", "BSAn_BSaAl-kA1culGhRp_IL1ovVUoi"
+    "BRAVE_API_KEY", "__YOUR_BRAVE_API_KEY__"
 )
 ANTIGRAVITY_URL = os.environ.get(
     "ANTIGRAVITY_URL", "http://127.0.0.1:8045/v1"
@@ -57,7 +57,7 @@ CLI_ALLOWLIST: dict[str, dict] = {
     "gog": {
         "bin": "gog",
         "desc": "Google Workspace (Gmail, Calendar, Drive, Contacts, Sheets, Docs)",
-        "env": {"GOG_KEYRING_BACKEND": "file", "GOG_KEYRING_PASSWORD": "REDACTED_GOG_PASSWORD"},
+        "env": {"GOG_KEYRING_BACKEND": "file", "GOG_KEYRING_PASSWORD": "__YOUR_GOG_PASSWORD__"},
     },
     "bird": {
         "bin": "bird",
@@ -137,8 +137,8 @@ def _run(cmd: str | list, timeout: int = 60, env_extra: dict | None = None, cwd:
 # Tailscale + localhost hosts for DNS rebinding protection (MCP SDK ≥1.26)
 _ALLOWED_HOSTS = [
     "127.0.0.1:*", "localhost:*", "[::1]:*",           # local
-    "mudui-macmini-3:*", "100.86.78.124:*",            # Tailscale (MagicDNS + IP)
-    "mudui-macmini-3.tail2895bc.ts.net:*",              # Tailscale FQDN
+    # Add your Tailscale hosts here if using remote access:
+    # "your-hostname:*", "100.x.y.z:*",
 ]
 
 mcp = FastMCP(
@@ -406,7 +406,7 @@ async def shell_exec(command: str, cwd: str = "", timeout: int = 60) -> str:
 async def git_status(repo: str = "") -> str:
     """查看 Git 仓库状态。repo 为 ~/projects/ 下的目录名，空则查 workspace。
 
-    示例: repo="" (workspace) | repo="mudui-blog" | repo="aihub-web"
+    示例: repo="" (workspace) | repo="my-project" | repo="web-app"
     """
     if repo:
         repo_path = (PROJECTS_DIR / repo).resolve()
@@ -449,7 +449,7 @@ async def op_get(item: str, field: str = "password") -> str:
     """
     env_extra = _load_op_env()
     result = _run(
-        f"op item get {shlex.quote(item)} --fields {shlex.quote(field)} --vault 'Server-MacMini'",
+        f"op item get {shlex.quote(item)} --fields {shlex.quote(field)} --vault '__YOUR_1PASSWORD_VAULT__'",
         env_extra=env_extra, timeout=15,
     )
     # Mask the value for safety: show first 5 and last 3 chars
@@ -464,7 +464,7 @@ async def op_get_raw(item: str, field: str = "password") -> str:
     """从 1Password 获取完整凭据（不掩码）。仅限个人使用。"""
     env_extra = _load_op_env()
     return _run(
-        f"op item get {shlex.quote(item)} --fields {shlex.quote(field)} --vault 'Server-MacMini'",
+        f"op item get {shlex.quote(item)} --fields {shlex.quote(field)} --vault '__YOUR_1PASSWORD_VAULT__'",
         env_extra=env_extra, timeout=15,
     )
 
@@ -505,7 +505,7 @@ async def system_info() -> str:
 async def project_tree(path: str = "", depth: int = 2) -> str:
     """列出项目目录结构。path 为 ~/projects/ 下的路径，空则列出所有项目。
 
-    示例: path="" (列项目) | path="mudui-blog" | path="mudui-blog/src"
+    示例: path="" (列项目) | path="my-project" | path="my-project/src"
     """
     if not path:
         # List all projects
@@ -531,7 +531,7 @@ async def project_tree(path: str = "", depth: int = 2) -> str:
 async def project_read(path: str, offset: int = 0, limit: int = 200) -> str:
     """读取项目文件。path 为 ~/projects/ 或 ~/clawd/ 下的相对路径。
 
-    示例: path="mudui-blog/src/content/config.ts"
+    示例: path="my-project/src/content/config.ts"
     """
     # Try projects first, then workspace
     target = (PROJECTS_DIR / path).resolve()
@@ -561,7 +561,7 @@ async def project_write(path: str, content: str, mode: str = "overwrite") -> str
     自动创建不存在的父目录。
 
     示例:
-      path="mudui-blog/test.txt", content="hello", mode="overwrite"
+      path="my-project/test.txt", content="hello", mode="overwrite"
       path="mcp-bridge/server.py", content="# new line", mode="append"
     """
     # Resolve path: try projects first, then workspace
@@ -603,7 +603,7 @@ async def code_search(pattern: str, path: str = "", file_glob: str = "", max_res
     path: ~/projects/ 下的目录，空则搜 workspace
     file_glob: 文件过滤，如 "*.py" "*.ts"
 
-    示例: pattern="def main", path="mudui-blog", file_glob="*.py"
+    示例: pattern="def main", path="my-project", file_glob="*.py"
     """
     search_dir = str(WORKSPACE)
     if path:
