@@ -938,6 +938,33 @@ if ! $SKIP_DASHBOARD; then
       success "Dashboard token generated"
     fi
 
+    # Write dashboard config (controls which tools/modules are displayed)
+    DASHBOARD_CONFIG="${HOME}/.config/openclaw/dashboard.config.json"
+    if [ ! -f "$DASHBOARD_CONFIG" ]; then
+      cat > "$DASHBOARD_CONFIG" << 'DASHCFG'
+{
+  "tools": [
+    { "name": "openclaw", "command": "openclaw", "versionArgs": ["--version"] },
+    { "name": "claude", "command": "claude", "versionArgs": ["--version"] },
+    { "name": "codex", "command": "codex", "versionArgs": ["--version"] },
+    { "name": "gemini", "command": "gemini", "versionArgs": ["--version"] },
+    { "name": "qmd", "command": "qmd" },
+    { "name": "mcporter", "command": "mcporter", "versionArgs": ["--version"] },
+    { "name": "clawhub", "command": "clawhub", "versionArgs": ["--version"] },
+    { "name": "uv", "command": "uv", "versionArgs": ["--version"] },
+    { "name": "bun", "command": "bun", "versionArgs": ["--version"] }
+  ],
+  "modules": ["运行态", "基建", "知识", "配置"],
+  "projects": [
+    { "key": "openclaw-workspace", "path": "~/clawd", "repo": "" },
+    { "key": "infra-dashboard", "path": "~/projects/infra-dashboard", "repo": "MuduiClaw/infra-dashboard" }
+  ],
+  "channels": {}
+}
+DASHCFG
+      success "Dashboard config written"
+    fi
+
     # Prepare start script
     NODE_BIN_DIR="$(dirname "$(command -v node)")"
     START_SCRIPT="${OPENCLAW_STATE}/scripts/start-infra-dashboard.sh"
