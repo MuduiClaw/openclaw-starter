@@ -1,12 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-# Start infra-dashboard (called by LaunchAgent)
-# __HOME__, __NODE_BIN__ will be replaced by setup.sh
+# Start infra-dashboard (standalone mode, called by LaunchAgent)
+# __HOME__, __NODE_BIN__, __GATEWAY_PORT__ will be replaced by setup.sh
 
 export PATH="__NODE_BIN__:/usr/local/bin:/opt/homebrew/bin:$PATH"
 export HOME="__HOME__"
 export NODE_ENV="production"
+export PORT="3001"
+export HOSTNAME="127.0.0.1"
 
 # Dashboard token (set during setup)
 if [ -f "$HOME/.config/openclaw/dashboard.env" ]; then
@@ -22,7 +24,6 @@ fi
 export OPENCLAW_GATEWAY_URL="http://127.0.0.1:__GATEWAY_PORT__"
 OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
 if [[ -f "$OPENCLAW_CONFIG" ]]; then
-  # Extract gateway auth token from config
   GW_TOKEN=$(node -e "
     const c = require('$OPENCLAW_CONFIG');
     const t = c?.gateway?.auth?.token || c?.gateway?.token || '';
@@ -42,25 +43,5 @@ export PROJECTS_ROOT="$HOME/projects"
 
 cd "$HOME/projects/infra-dashboard"
 
-# ABI guard: ensure better-sqlite3 matches this Node version
-SQLITE_CHECK=$(node -e "
-  try {
-    const D = require('better-sqlite3');
-    const d = new D(':memory:');
-    d.close();
-    console.log('ok');
-  } catch(e) {
-    console.log('fail');
-  }
-" 2>/dev/null || echo "fail")
-
-if [[ "$SQLITE_CHECK" != "ok" ]]; then
-  echo "[start] better-sqlite3 incompatible, rebuilding..."
-  npm rebuild better-sqlite3
-fi
-
-if [[ ! -f .next/BUILD_ID ]] || find app components lib public -type f -newer .next/BUILD_ID | head -n 1 | grep -q .; then
-  npm run build
-fi
-
-exec npx next start --port 3001 --hostname 127.0.0.1
+# Standalone mode: just run server.js
+exec node server.js

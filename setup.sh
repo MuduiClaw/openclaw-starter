@@ -49,16 +49,6 @@ progress_done() {
   printf "${GREEN}     %-30s ✓${NC}\n" "$1"
 }
 
-# git clone wrapper — passes GitHub token as extraheader when available
-# Sets GIT_TERMINAL_PROMPT=0 to prevent interactive credential prompts
-git_clone_auth() {
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    GIT_TERMINAL_PROMPT=0 git -c "http.extraheader=Authorization: token ${GITHUB_TOKEN}" "$@"
-  else
-    GIT_TERMINAL_PROMPT=0 git "$@"
-  fi
-}
-
 # --- Parse Flags ---
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -742,14 +732,6 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ;;
   esac
 
-  # --- GitHub Token (needed for infra-dashboard) ---
-  echo ""
-  info "GitHub Token 用于安装 infra-dashboard 监控面板（私有仓库）"
-  info "没有 Token 也能完成安装，但不会包含监控面板"
-  ask "GitHub Token (回车跳过): "
-  read -rs GITHUB_TOKEN
-  echo ""
-
   # --- Review & Confirm ---
   echo ""
   printf "${BOLD}     配置确认:${NC}\n"
@@ -767,7 +749,6 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   else
     printf "       频道:  ${DIM}未配置（稍后添加）${NC}\n"
   fi
-  printf "       GitHub: ${GITHUB_TOKEN:+已配置 → 含 infra-dashboard}${GITHUB_TOKEN:-${DIM}未配置 → 跳过 infra-dashboard${NC}}\n"
   echo ""
   ask "确认以上配置？[Y/n] (n=重新配置) "
   read -r confirm_config
@@ -837,7 +818,6 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   _OC_DISCORD_USER="${DISCORD_USER:-}" \
   _OC_FEISHU_APP_ID="${FEISHU_APP_ID:-}" \
   _OC_FEISHU_APP_SECRET="${FEISHU_APP_SECRET:-}" \
-  _OC_GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   _OC_CHANNEL_TYPE="${CHANNEL_TYPE:-}" \
   _OC_STATE_DIR="$OPENCLAW_STATE" \
   python3 -c '
@@ -853,8 +833,6 @@ if E("_OC_ANTHROPIC_MODE") == "api-key" and E("_OC_ANTHROPIC_KEY"):
     env_vars["ANTHROPIC_API_KEY"] = E("_OC_ANTHROPIC_KEY")
 if E("_OC_DISCORD_TOKEN"):
     env_vars["DISCORD_BOT_TOKEN"] = E("_OC_DISCORD_TOKEN")
-if E("_OC_GITHUB_TOKEN"):
-    env_vars["GITHUB_TOKEN"] = E("_OC_GITHUB_TOKEN")
 
 # model
 model_block = {"primary": E("_OC_PRIMARY_MODEL")}
@@ -948,71 +926,25 @@ fi  # end SKIP_CONFIG
 # ============================================================================
 step "3/3" "启动 (Launch)"
 
-# --- infra-dashboard (auto-install from GitHub) ---
+# --- infra-dashboard (pre-built standalone from GitHub Release) ---
 if ! $SKIP_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
+  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/openclaw-starter/releases/latest/download/infra-dashboard-standalone.tar.gz"
 
-  if [ ! -d "$DASHBOARD_DIR" ]; then
-    info "Installing infra-dashboard..."
-    mkdir -p "${HOME}/projects"
+  if [ ! -d "$DASHBOARD_DIR" ] || [ ! -f "$DASHBOARD_DIR/server.js" ]; then
+    info "Installing infra-dashboard (standalone)..."
+    mkdir -p "$DASHBOARD_DIR"
 
-    # Build clone URL (use GitHub token via extraheader — never embed in URL)
-    DASH_CLONE_URL="https://github.com/MuduiClaw/infra-dashboard.git"
-
-    # Also clone shared-ui dependency
-    SHARED_UI_DIR="${HOME}/projects/shared-ui"
-    SHARED_CLONE_URL="https://github.com/MuduiClaw/shared-ui.git"
-
-    # Try git clone first, fall back to tarball download (works better in China)
-    if ! git_clone_auth clone --depth 1 "$DASH_CLONE_URL" "$DASHBOARD_DIR" 2>/dev/null; then
-      info "git clone failed, trying tarball download..."
-      TARBALL_HEADER=""
-      if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        TARBALL_HEADER="Authorization: token ${GITHUB_TOKEN}"
-      fi
-      mkdir -p "$DASHBOARD_DIR"
-      if [[ -n "$TARBALL_HEADER" ]]; then
-        curl -sL -H "$TARBALL_HEADER" https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
-          tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null
-      else
-        curl -sL https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
-          tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null
-      fi
-      if [ ! -f "$DASHBOARD_DIR/package.json" ]; then
-        rm -rf "$DASHBOARD_DIR"
-        warn "Failed to download infra-dashboard"
-        if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-          warn "这是私有仓库，需要 GitHub Token 才能下载"
-          warn "重新运行 setup.sh 时填写 GitHub Token，或手动克隆:"
-        else
-          warn "请检查网络连接和 GitHub Token 权限，或手动克隆:"
-        fi
-        warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
-      fi
-    fi
-
-    # Clone shared-ui if not present (infra-dashboard depends on file:../shared-ui)
-    if [ ! -d "$SHARED_UI_DIR" ]; then
-      git_clone_auth clone --depth 1 "$SHARED_CLONE_URL" "$SHARED_UI_DIR" 2>/dev/null || \
-        warn "Failed to clone shared-ui (non-critical)"
+    if curl -fsSL "$DASHBOARD_RELEASE_URL" | tar xz -C "$DASHBOARD_DIR" 2>/dev/null; then
+      success "infra-dashboard downloaded"
+    else
+      rm -rf "$DASHBOARD_DIR"
+      warn "Failed to download infra-dashboard (check network)"
+      warn "Retry later: curl -fsSL $DASHBOARD_RELEASE_URL | tar xz -C ~/projects/infra-dashboard"
     fi
   fi
 
-  if [ -d "$DASHBOARD_DIR" ]; then
-    cd "$DASHBOARD_DIR" || true
-
-    # Pull latest if already cloned
-    git pull --ff-only 2>/dev/null || true
-
-    if [ ! -d "node_modules" ]; then
-      info "Installing dashboard dependencies..."
-      npm install 2>/dev/null || warn "Dashboard npm install failed"
-    fi
-    if [ ! -f ".next/BUILD_ID" ]; then
-      info "Building dashboard..."
-      npm run build 2>/dev/null || warn "Dashboard build failed (non-critical)"
-    fi
-
+  if [ -d "$DASHBOARD_DIR" ] && [ -f "$DASHBOARD_DIR/server.js" ]; then
     # Generate dashboard token if missing
     DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
     if [ ! -f "$DASHBOARD_ENV" ]; then
@@ -1060,9 +992,8 @@ DASHCFG
     chmod +x "$START_SCRIPT"
 
     progress_done "infra-dashboard"
-    cd "$SCRIPT_DIR" || true
   else
-    warn "infra-dashboard not found — skipping (you can clone it later)"
+    warn "infra-dashboard not found — skipping (download later from GitHub Release)"
   fi
 
 # --- MCP Bridge start script ---
