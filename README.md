@@ -227,7 +227,11 @@ openclaw channels add
      LaunchAgents: 8/8 ✓
 
 🎉 你的 AI 合伙人已就绪。
-   Dashboard:  http://localhost:3001
+   Control UI:  http://localhost:3456  (跟 AI 对话)
+   Dashboard:   http://localhost:3001/?token=xxx  (基建监控)
+                ↑ 保存到浏览器书签，自动登录
+   ⚡ Gateway Token: xxx
+      (在 Control UI 里粘贴此 token 即可开始对话)
    下一步:     在 Discord/飞书跟你的 AI 说句话试试
 ```
 
@@ -291,9 +295,12 @@ bash ~/clawd/scripts/safe-upgrade-openclaw.sh
 
 - 所有服务绑定 `127.0.0.1`（不暴露到局域网）
 - API Key 交互式输入，不硬编码在脚本中
+- 敏感文件创建时使用 `umask 077`（无权限窗口泄露）
+- Gateway Token 自动生成并写入配置（重跑 setup 不覆盖）
 - GitHub Token 通过 `http.extraheader` 传递，不写入 `.git/config`
 - 配置生成使用 python3 + 环境变量，无 shell 注入风险
 - Guardian Agent：`shell=False` + `shlex.split`
+- 卸载路径安全检查（拒绝删除 `/`、`$HOME` 等危险路径）
 
 ## 架构
 
@@ -327,6 +334,25 @@ openclaw-starter/
 ├── services/                # LaunchAgent 模板 + 服务启动脚本
 └── docs/                    # 文档
 ```
+
+## 注意事项
+
+### 网络环境
+- **国内用户**：安装脚本会自动检测系统代理。如果 GitHub 不通，按提示配置清华镜像
+- **Dashboard 下载超时**：弱网环境下 infra-dashboard 下载有 120 秒超时，失败后可手动重试
+
+### 重复运行 setup.sh
+- 已有配置会询问是否覆盖，不会静默丢失
+- Gateway Token 会自动保留（不会因重配而失效）
+- 用户在 `~/clawd/skills/` 等目录下新增的文件不会被删除
+
+### 访问面板
+- **Control UI** (`localhost:3456`)：需要粘贴安装完成时显示的 Gateway Token
+- **infra-dashboard** (`localhost:3001`)：用安装完成时显示的带 `?token=` 的链接，保存为书签
+- 如果看到"链接已失效"提示，说明书签里的 token 过期了，用最新密码重新登录即可
+
+### Intel Mac
+- 完整支持 x86_64 架构，qmd 等工具安装在 `~/.local/` 目录下，不需要 sudo
 
 ## 更多文档
 

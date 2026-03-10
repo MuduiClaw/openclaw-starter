@@ -2,7 +2,20 @@
 
 ## [1.3.0] - 2026-03-10
 
-### 安全修复
+### 安全修复（Oracle 审查 9 项）
+- **文件权限窗口消除**：所有 Token/Config 写入改用 `umask 077`，消除创建到 chmod 之间的泄露窗口
+- **卸载路径安全检查**：`--uninstall` 拦截 `/`、`$HOME` 等危险路径，防止误删
+- **sudo keepalive 条件启动**：提权失败时不再盲启后台进程
+
+### 健壮性修复
+- **Gateway 端口冲突检查**：3456 端口加入 pre-flight 检查
+- **Gateway Token 保留**：重跑 setup.sh 重新配置时复用已有 token，不丢失书签/客户端连接
+- **LaunchAgent plist 重载**：PATH patch 后立即 unload/load，确保生效
+- **rsync 增量覆盖**：去掉 `--delete`，保留用户在 skills/prompts 下的自定义文件
+- **qmd 安装路径**：从 `/usr/local/` 迁移到 `~/.local/`，Intel Mac 不再需要 sudo
+- **网络超时保护**：Dashboard 下载加 120s 超时；Tailscale 状态检查加 5s 超时
+
+### 安全修复（历史）
 - **MCP Bridge + Dashboard 绑定 localhost**：不再暴露到局域网（公共 WiFi 安全）
 - **移除硬编码 API Key**：MiniMax key 改为用户交互式输入，不再写死在脚本中
 - **消除模板注入风险**：config 生成从 node -e 迁移到 python3 + 环境变量
