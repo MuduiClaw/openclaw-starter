@@ -88,6 +88,11 @@ if $UNINSTALL; then
   ask "Delete workspace ${WORKSPACE_DIR}? [y/N]"
   read -r confirm
   if [[ "$confirm" =~ ^[yY]$ ]]; then
+    # Safety: refuse to delete critical paths
+    case "$WORKSPACE_DIR" in
+      /|"$HOME"|/usr|/var|/etc|/tmp)
+        fatal "Safety check: refusing to delete ${WORKSPACE_DIR}" ;;
+    esac
     rm -rf "$WORKSPACE_DIR"
     info "Workspace deleted"
   fi
@@ -95,6 +100,10 @@ if $UNINSTALL; then
   ask "Delete state dir ${OPENCLAW_STATE}? [y/N]"
   read -r confirm
   if [[ "$confirm" =~ ^[yY]$ ]]; then
+    case "$OPENCLAW_STATE" in
+      /|"$HOME"|/usr|/var|/etc|/tmp)
+        fatal "Safety check: refusing to delete ${OPENCLAW_STATE}" ;;
+    esac
     rm -rf "$OPENCLAW_STATE"
     info "State directory deleted"
   fi
@@ -116,11 +125,14 @@ step "0/3" "环境检查 (Pre-flight)"
 
 # --- Sudo pre-collection (needed for Homebrew, pmset, systemsetup) ---
 info "Some steps require admin privileges (Homebrew, sleep settings, SSH)."
-sudo -v 2>/dev/null || true
-# Keep sudo alive in background (refresh every 50s, killed on script exit)
-( while true; do sudo -n true 2>/dev/null; sleep 50; done ) &
-SUDO_KEEPALIVE_PID=$!
-trap 'kill $SUDO_KEEPALIVE_PID 2>/dev/null' EXIT
+if sudo -v 2>/dev/null; then
+  # Keep sudo alive in background (refresh every 50s, killed on script exit)
+  ( while true; do sudo -n true 2>/dev/null; sleep 50; done ) &
+  SUDO_KEEPALIVE_PID=$!
+  trap 'kill $SUDO_KEEPALIVE_PID 2>/dev/null' EXIT
+else
+  warn "Sudo not available — some steps may be skipped"
+fi
 
 # --- System proxy auto-detection (critical for China network) ---
 if [[ -z "${https_proxy:-}" ]] && [[ -z "${HTTPS_PROXY:-}" ]]; then
@@ -192,7 +204,7 @@ if [[ -n "$NPM_PREFIX" ]] && [[ ! -w "${NPM_PREFIX}/lib/node_modules" ]]; then
 fi
 
 # --- Port Check (advisory, not blocking) ---
-for port_info in "3001:infra-dashboard" "9100:mcp-bridge"; do
+for port_info in "3456:openclaw-gateway" "3001:infra-dashboard" "9100:mcp-bridge"; do
   port="${port_info%%:*}"
   name="${port_info##*:}"
   pid=$(lsof -ti ":$port" 2>/dev/null || true)
@@ -403,7 +415,7 @@ if ! $NO_TAILSCALE; then
     # Start Tailscale service
     brew services start tailscale 2>/dev/null || true
     # Check if already logged in
-    if ! tailscale status &>/dev/null 2>&1; then
+    if ! perl -e 'alarm 5; exec @ARGV' tailscale status &>/dev/null 2>&1; then
       echo ""
       info "下一步将打开浏览器进行 Tailscale 授权"
       info "完成浏览器中的登录后，返回此窗口继续..."
@@ -475,8 +487,8 @@ for dir in "${SYSTEM_DIRS[@]}"; do
         cp -a "$dst" "$backup"
       fi
     fi
-    # Sync (overwrite)
-    rsync -a --delete "$src/" "$dst/"
+    # Sync (overwrite system files, but don't delete user additions)
+    rsync -a "$src/" "$dst/"
   fi
 done
 
@@ -517,7 +529,8 @@ mkdir -p "${WORKSPACE_DIR}/tasks"
 progress_done "Workspace → ${WORKSPACE_DIR}"
 
 # --- qmd-safe.sh wrapper ---
-QMD_PATH="$(command -v qmd 2>/dev/null || echo "${BREW_PREFIX}/bin/qmd")"
+NODE_BIN_QMD="$(dirname "$(command -v node 2>/dev/null || echo /usr/local/bin/node)")/qmd"
+QMD_PATH="$(command -v qmd 2>/dev/null || echo "$NODE_BIN_QMD")"
 cat > "${OPENCLAW_STATE}/scripts/qmd-safe.sh" << QMDEOF
 #!/bin/bash
 set -euo pipefail
@@ -807,8 +820,12 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
     FALLBACK_LINE=""
   fi
 
-  # Generate gateway auth token
-  GATEWAY_TOKEN=$(openssl rand -hex 24)
+  # Generate gateway auth token (reuse existing if reconfiguring)
+  EXISTING_GW_TOKEN=""
+  if [ -f "$EXISTING_CONFIG" ]; then
+    EXISTING_GW_TOKEN=$(python3 -c "import json; c=json.load(open('$EXISTING_CONFIG')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null || true)
+  fi
+  GATEWAY_TOKEN="${EXISTING_GW_TOKEN:-$(openssl rand -hex 24)}"
 
   # Generate openclaw.json using python3 (safe from shell injection)
   _OC_PRIMARY_MODEL="$PRIMARY_MODEL" \
@@ -909,7 +926,7 @@ config = {
     "browser": {"enabled": True, "headless": True},
 }
 print(json.dumps(config, indent=2))
-' > "$EXISTING_CONFIG"
+' | (umask 077; cat > "$EXISTING_CONFIG")
 
   success "Generated ${EXISTING_CONFIG}"
 
@@ -939,7 +956,7 @@ if ! $SKIP_DASHBOARD; then
     info "Installing infra-dashboard (standalone)..."
     mkdir -p "$DASHBOARD_DIR"
 
-    if curl -fsSL "$DASHBOARD_RELEASE_URL" | tar xz -C "$DASHBOARD_DIR" 2>/dev/null; then
+    if curl --connect-timeout 10 --max-time 120 -fsSL "$DASHBOARD_RELEASE_URL" | tar xz -C "$DASHBOARD_DIR" 2>/dev/null; then
       success "infra-dashboard downloaded"
     else
       rm -rf "$DASHBOARD_DIR"
@@ -953,8 +970,7 @@ if ! $SKIP_DASHBOARD; then
     DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
     if [ ! -f "$DASHBOARD_ENV" ]; then
       DASH_TOKEN="0000"
-      echo "export DASHBOARD_TOKEN=${DASH_TOKEN}" > "$DASHBOARD_ENV"
-      chmod 600 "$DASHBOARD_ENV"
+      (umask 077; echo "export DASHBOARD_TOKEN=${DASH_TOKEN}" > "$DASHBOARD_ENV")
       success "Dashboard token generated"
     fi
 
@@ -1106,14 +1122,16 @@ env['PATH'] = '$CORRECT_PATH'
 with open('$GW_PLIST', 'wb') as f:
     plistlib.dump(d, f)
 " 2>/dev/null || true
+      # Reload plist so PATH patch takes effect before gateway start
+      launchctl unload "$GW_PLIST" 2>/dev/null || true
+      launchctl load "$GW_PLIST" 2>/dev/null || true
     fi
 
     # Sync gateway token → dashboard.env (gateway install may auto-generate a token)
     DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
     GW_TOKEN=$(python3 -c "import json; c=json.load(open('${HOME}/.openclaw/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token','') or c.get('gateway',{}).get('token',''))" 2>/dev/null)
     if [[ -n "$GW_TOKEN" ]]; then
-      echo "export DASHBOARD_TOKEN=${GW_TOKEN}" > "$DASHBOARD_ENV"
-      chmod 600 "$DASHBOARD_ENV"
+      (umask 077; echo "export DASHBOARD_TOKEN=${GW_TOKEN}" > "$DASHBOARD_ENV")
       success "Dashboard token synced with gateway"
     fi
 
