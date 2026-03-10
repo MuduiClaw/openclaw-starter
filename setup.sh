@@ -742,9 +742,11 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ;;
   esac
 
-  # --- Optional: GitHub Token ---
+  # --- GitHub Token (needed for infra-dashboard) ---
   echo ""
-  ask "GitHub Token (可选, 直接回车跳过): "
+  info "GitHub Token 用于安装 infra-dashboard 监控面板（私有仓库）"
+  info "没有 Token 也能完成安装，但不会包含监控面板"
+  ask "GitHub Token (回车跳过): "
   read -rs GITHUB_TOKEN
   echo ""
 
@@ -765,7 +767,7 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   else
     printf "       频道:  ${DIM}未配置（稍后添加）${NC}\n"
   fi
-  printf "       GitHub: ${GITHUB_TOKEN:+已配置}${GITHUB_TOKEN:-${DIM}未配置${NC}}\n"
+  printf "       GitHub: ${GITHUB_TOKEN:+已配置 → 含 infra-dashboard}${GITHUB_TOKEN:-${DIM}未配置 → 跳过 infra-dashboard${NC}}\n"
   echo ""
   ask "确认以上配置？[Y/n] (n=重新配置) "
   read -r confirm_config
