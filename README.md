@@ -249,6 +249,8 @@ openclaw channels add
 
 打开页面后，在「网关令牌」框里粘贴 token，点「连接」即可开始对话。
 
+![Control UI — 粘贴 Gateway Token 后点连接](https://img.mudui.me/docs/starter/a31203e8-94b5-4620-b82d-ff6db5a6898c-ed9b256c.png)
+
 > Token 忘了？运行：
 > ```bash
 > python3 -c "import json; c=json.load(open('$HOME/.openclaw/openclaw.json')); print(c['gateway']['auth']['token'])"
@@ -261,6 +263,8 @@ openclaw channels add
 | **地址** | `http://localhost:3001` |
 | **用途** | 实时监控：服务状态、工具版本、模型用量、Cron 任务、LaunchAgent 健康 |
 | **登录** | 用安装完成时终端显示的带 `?token=xxx` 链接打开（自动登录），或手动输入密码 `0000` |
+
+![Infra Dashboard — 登录页面](https://img.mudui.me/docs/starter/6f291f3e-7ccc-4e98-ab26-97f53906b95e-7dd435d8.png)
 
 > 💡 **把带 token 的链接保存为浏览器书签**，以后打开直接进，不用每次输密码。
 
