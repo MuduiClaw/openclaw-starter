@@ -280,6 +280,41 @@ bash ~/clawd/scripts/safe-upgrade-openclaw.sh
 ./setup.sh --uninstall
 ```
 
+### 完全卸载
+
+```bash
+./setup.sh --uninstall
+```
+
+卸载脚本**自动清理**：
+- 8 个 LaunchAgent（Gateway、Guardian、备份、日志轮转等）
+- Cron 定时任务
+- infra-dashboard（`~/projects/infra-dashboard/`，需确认）
+- Dashboard 配置（`~/.config/openclaw/`）
+- qmd 语义搜索（`~/.local/lib/qmd/` + `~/.local/bin/qmd`）
+- Workspace（`~/clawd/`，需确认）
+- State 目录（`~/.openclaw/`，需确认）
+
+卸载脚本**不会自动删除**（可能被其他项目使用）：
+
+```bash
+# npm 全局包
+npm uninstall -g openclaw @openai/codex @anthropic-ai/claude-code \
+  @google/gemini-cli @steipete/oracle mcporter clawhub playwright \
+  @upstash/context7-mcp
+
+# Homebrew 包
+brew uninstall node@24 git tailscale
+
+# Bun 运行时
+rm -rf ~/.bun
+
+# uv 运行时
+rm -rf ~/.local/bin/uv ~/.local/bin/uvx
+
+# Shell PATH（检查 ~/.zprofile 删除 OpenClaw 追加的行）
+```
+
 ### 安装选项
 
 ```bash

@@ -84,6 +84,47 @@ if $UNINSTALL; then
     fi
   done
 
+  # Remove cron jobs
+  if command -v openclaw &>/dev/null; then
+    info "Removing cron jobs..."
+    openclaw cron list --json 2>/dev/null | python3 -c "
+import json, sys
+try:
+    jobs = json.load(sys.stdin)
+    for j in jobs:
+        print(j.get('name',''))
+except: pass
+" 2>/dev/null | while read -r job_name; do
+      [ -n "$job_name" ] && openclaw cron remove "$job_name" 2>/dev/null && info "Removed cron: $job_name"
+    done
+  fi
+
+  # Remove infra-dashboard
+  DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
+  if [ -d "$DASHBOARD_DIR" ]; then
+    ask "Delete infra-dashboard (${DASHBOARD_DIR})? [y/N]"
+    read -r confirm
+    if [[ "$confirm" =~ ^[yY]$ ]]; then
+      rm -rf "$DASHBOARD_DIR"
+      info "infra-dashboard deleted"
+    fi
+  fi
+
+  # Remove dashboard config
+  DASHBOARD_CONF="${HOME}/.config/openclaw"
+  if [ -d "$DASHBOARD_CONF" ]; then
+    rm -rf "$DASHBOARD_CONF"
+    info "Removed ${DASHBOARD_CONF}"
+  fi
+
+  # Remove qmd
+  QMD_LIB="${HOME}/.local/lib/qmd"
+  QMD_BIN="${HOME}/.local/bin/qmd"
+  if [ -d "$QMD_LIB" ] || [ -f "$QMD_BIN" ]; then
+    rm -rf "$QMD_LIB" "$QMD_BIN" 2>/dev/null
+    info "Removed qmd"
+  fi
+
   echo ""
   ask "Delete workspace ${WORKSPACE_DIR}? [y/N]"
   read -r confirm
@@ -109,6 +150,14 @@ if $UNINSTALL; then
   fi
 
   success "Uninstall complete"
+
+  echo ""
+  info "以下内容未自动删除（可能被其他项目使用）："
+  printf "   ${DIM}npm 全局包:${NC}  npm uninstall -g openclaw @openai/codex @anthropic-ai/claude-code @google/gemini-cli @steipete/oracle mcporter clawhub playwright @upstash/context7-mcp\n"
+  printf "   ${DIM}Homebrew 包:${NC} brew uninstall node@24 git tailscale\n"
+  printf "   ${DIM}Bun 运行时:${NC}  rm -rf ~/.bun\n"
+  printf "   ${DIM}uv 运行时:${NC}   rm -rf ~/.local/bin/uv ~/.local/bin/uvx\n"
+  printf "   ${DIM}Shell PATH:${NC}  检查 ~/.zprofile 删除 OpenClaw 追加的 PATH 行\n"
   exit 0
 fi
 
