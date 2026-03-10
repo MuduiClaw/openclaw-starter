@@ -6,11 +6,23 @@
 
 ## 快速开始
 
+一行命令，全新 Mac 也能跑（不需要提前装 git 或任何工具）：
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MuduiClaw/openclaw-starter/main/bootstrap.sh)"
+```
+
+> 全新 Mac 会自动安装 Xcode Command Line Tools（首次可能需要几分钟），之后自动进入安装流程。
+
+<details>
+<summary>或者手动 clone（需要已装好 git）</summary>
+
 ```bash
 git clone https://github.com/MuduiClaw/openclaw-starter.git
 cd openclaw-starter
 ./setup.sh
 ```
+</details>
 
 脚本会引导你完成所有配置。完成后打开 `http://localhost:3001` 查看监控面板。
 
@@ -183,6 +195,10 @@ openclaw channels add
 ## 安装过程
 
 ```
+🦞 OpenClaw Starter Kit — Bootstrap
+     Xcode Command Line Tools 已安装 ✓
+     代码就绪: ~/openclaw-starter ✓
+
 🦞 OpenClaw Starter Kit v1.3.0
 
 [0/3] 环境检查 ━━━━━━━━━━━━━━━━━━━━
@@ -296,7 +312,8 @@ bash ~/clawd/scripts/safe-upgrade-openclaw.sh
 
 ```
 openclaw-starter/
-├── setup.sh                 # 安装脚本（你运行的唯一命令）
+├── bootstrap.sh             # 一行 curl 入口（处理 Xcode CLT + clone）
+├── setup.sh                 # 主安装脚本（bootstrap 自动调用）
 ├── CHANGELOG.md             # 版本变更记录
 ├── workspace/               # → 安装到 ~/clawd
 │   ├── AGENTS.md            # The Loop 方法论
