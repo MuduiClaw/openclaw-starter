@@ -696,6 +696,14 @@ if [ -d "$DOTFILES_DIR" ]; then
     fi
   fi
 
+  # Git quality gates (shellcheck, scope check, conventional commits)
+  HOOKS_DIR="${WORKSPACE_DIR}/.githooks"
+  if [ -d "$HOOKS_DIR" ] && [ -f "$HOOKS_DIR/prepare-commit-msg" ]; then
+    git config --global core.hooksPath "$HOOKS_DIR" 2>/dev/null || true
+    chmod +x "$HOOKS_DIR"/* 2>/dev/null || true
+    progress_done "Git quality gates"
+  fi
+
   # nanorc
   if [ -f "${DOTFILES_DIR}/nanorc" ] && [ ! -f "${HOME}/.nanorc" ]; then
     cp "${DOTFILES_DIR}/nanorc" "${HOME}/.nanorc"

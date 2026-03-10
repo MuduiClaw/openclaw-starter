@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# PRE-PUSH gate: Quality checks before push
+set -euo pipefail
+
+echo "🔍 Pre-push gate..."
+
+# shellcheck disable=SC2034
+REMOTE="$1"
+z40=0000000000000000000000000000000000000000
+failed=0
+repo_root="$(git rev-parse --show-toplevel)"
+
+# shellcheck disable=SC2034
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "$local_sha" == "$z40" ]]; then
+    continue
+  fi
+
+  if [[ "$remote_sha" == "$z40" ]]; then
+    echo "  ❌ Pushing new branch — we only push main, no feature branches"
+    failed=1
+    continue
+  fi
+  range="$remote_sha..$local_sha"
+
+  # Gate 1: Conventional commit format
+  while IFS= read -r msg; do
+    [[ "$msg" == Merge* ]] && continue
+    if ! echo "$msg" | grep -qE '^(feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert|init|wip|backup|journal|spec)(\([^)]+\))?(!)?:'; then
+      echo "  ❌ Bad commit format: $msg"
+      echo "     Expected: type[(scope)]: description"
+      failed=1
+    fi
+  done < <(git log --format='%s' "$range" 2>/dev/null || true)
+
+  # Gate 2: Anti-salami spec check (only for projects with tasks/)
+  if [[ -d "$repo_root/tasks" ]]; then
+    impl_count=$(git log --no-merges --format="" --name-only --invert-grep -E --grep="^(backup|journal):" "$range" 2>/dev/null | grep -E '\.(sh|ts|tsx|js|jsx|py|go|rs)$' | sort -u | wc -l || true)
+    impl_count=$(echo "$impl_count" | tr -d ' ')
+    if [[ "$impl_count" -ge 8 ]]; then
+      has_spec=0
+      if git log --format='%B' "$range" 2>/dev/null | grep -qE '\[spec:[^]]*\]'; then
+        has_spec=1
+      fi
+      if [[ $has_spec -eq 0 ]]; then
+        echo "  ⛔ [Gate 2] 累积 ${impl_count} 个 impl 文件但无 spec 引用"
+        failed=1
+      fi
+    fi
+  fi
+
+  # Gate 3: Pre-commit trailer check
+  while IFS= read -r sha; do
+    msg=$(git log -1 --format='%B' "$sha")
+    first_line=$(echo "$msg" | head -1)
+    case "$first_line" in
+      Merge*|backup:*|journal:*) continue ;;
+    esac
+    if ! echo "$msg" | grep -q 'Pre-commit-gate: passed'; then
+      echo "  ❌ Commit $sha missing Pre-commit-gate trailer (hooks bypassed?)"
+      failed=1
+    fi
+  done < <(git rev-list "$range" 2>/dev/null || true)
+
+done
+
+if [[ $failed -eq 1 ]]; then
+  echo "⛔ PRE-PUSH GATE FAILED"
+  exit 1
+fi
+
+echo "✅ Pre-push gate: passed"
+exit 0

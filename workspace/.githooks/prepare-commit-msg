@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# PREPARE-COMMIT-MSG: Pre-commit quality gate
+# Installed by: git config core.hooksPath ~/clawd/.githooks/
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="${2:-}"
+
+# Skip for merge/squash
+case "$COMMIT_SOURCE" in
+  merge|squash) exit 0 ;;
+esac
+
+# Already has trailer
+if grep -q '^Pre-commit-gate: passed' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+commit_msg_line=""
+if [[ -f "$COMMIT_MSG_FILE" ]]; then
+  commit_msg_line="$(head -1 "$COMMIT_MSG_FILE")"
+fi
+
+# Collect staged files
+all_staged=()
+while IFS= read -r f; do
+  [[ -z "$f" ]] && continue
+  all_staged+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACMRD)
+
+staged_count=${#all_staged[@]}
+
+# ============================================================
+# Gate: Scope lock — staged files > 5 requires [scope-ack]
+# Prevents blind `git add -A`
+# ============================================================
+if [[ $staged_count -gt 5 ]]; then
+  echo ""
+  echo "⚠️  SCOPE CHECK: $staged_count files staged (threshold: 5)"
+  echo "  Staged files:"
+  for f in "${all_staged[@]}"; do
+    echo "    - $f"
+  done
+  echo ""
+  case "$commit_msg_line" in
+    backup:*|journal:*|spec:*)
+      echo "  ⏭  Auto-commit ($commit_msg_line), scope check skipped"
+      ;;
+    *)
+      if ! echo "$commit_msg_line" | grep -q '\[scope-ack\]'; then
+        echo "⛔ COMMIT BLOCKED — $staged_count files staged but no [scope-ack] in commit message"
+        echo "  Review the list above. If all files are intentional, add [scope-ack] to your commit message."
+        exit 1
+      else
+        echo "  ✅ [scope-ack] found, proceeding"
+      fi
+      ;;
+  esac
+fi
+
+# ============================================================
+# Gate: Spec pipeline (only for projects with tasks/ dir)
+# ============================================================
+impl_file_count=0
+for f in "${all_staged[@]}"; do
+  case "$f" in
+    scripts/*.sh|scripts/*.ts|scripts/*.py|src/*.ts|src/*.py) impl_file_count=$((impl_file_count + 1)) ;;
+  esac
+done
+
+if [[ $impl_file_count -ge 3 && -d "$repo_root/tasks" ]]; then
+  case "$commit_msg_line" in
+    feat:*|feat\(*|refactor:*|refactor\(*)
+      spec_ref=$(echo "$commit_msg_line" | sed -n 's/.*\[spec:\([^]]*\)\].*/\1/p')
+      if [[ -z "$spec_ref" ]]; then
+        echo ""
+        echo "⛔ COMMIT BLOCKED — feat/refactor with $impl_file_count impl files but no spec reference"
+        echo "  Add [spec:filename] to commit message"
+        exit 1
+      fi
+      spec_file="$repo_root/tasks/${spec_ref}.md"
+      if [[ ! -f "$spec_file" ]]; then
+        echo "⛔ COMMIT BLOCKED — spec file not found: $spec_file"
+        exit 1
+      fi
+      echo "  ✅ Spec gate: $spec_file"
+      ;;
+  esac
+fi
+
+# ============================================================
+# Syntax checks
+# ============================================================
+staged_sh=()
+staged_json=()
+needs_check=0
+
+for f in "${all_staged[@]}"; do
+  case "$f" in
+    *.sh)   staged_sh+=("$f"); needs_check=1 ;;
+    *.json) staged_json+=("$f"); needs_check=1 ;;
+  esac
+done
+
+if [[ $needs_check -eq 0 ]]; then
+  printf '\nPre-commit-gate: passed\n' >> "$COMMIT_MSG_FILE"
+  exit 0
+fi
+
+cd "$repo_root"
+failed=0
+
+# Shellcheck on staged .sh files
+if [[ ${#staged_sh[@]} -gt 0 ]] && command -v shellcheck &>/dev/null; then
+  echo "🔍 Pre-commit gate: shellcheck (${#staged_sh[@]} files)..."
+  for f in "${staged_sh[@]}"; do
+    if [[ -f "$f" ]] && ! shellcheck -S warning "$f" 2>&1; then
+      echo "   ❌ $f"
+      failed=1
+    fi
+  done
+fi
+
+# JSON syntax
+if [[ ${#staged_json[@]} -gt 0 ]]; then
+  echo "🔍 Pre-commit gate: JSON syntax (${#staged_json[@]} files)..."
+  for f in "${staged_json[@]}"; do
+    if [[ -f "$f" ]] && ! python3 -m json.tool "$f" >/dev/null 2>&1; then
+      echo "   ❌ Invalid JSON: $f"
+      failed=1
+    fi
+  done
+fi
+
+if [[ $failed -eq 1 ]]; then
+  echo "⛔ PRE-COMMIT GATE FAILED"
+  exit 1
+fi
+
+printf '\nPre-commit-gate: passed\n' >> "$COMMIT_MSG_FILE"
+echo "✅ Pre-commit gate: passed"
+exit 0
