@@ -50,12 +50,12 @@ progress_done() {
 }
 
 # git clone wrapper — passes GitHub token as extraheader when available
-# (avoids bash 3.2 empty-array + set -u crash)
+# Sets GIT_TERMINAL_PROMPT=0 to prevent interactive credential prompts
 git_clone_auth() {
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    git -c "http.extraheader=Authorization: token ${GITHUB_TOKEN}" "$@"
+    GIT_TERMINAL_PROMPT=0 git -c "http.extraheader=Authorization: token ${GITHUB_TOKEN}" "$@"
   else
-    git "$@"
+    GIT_TERMINAL_PROMPT=0 git "$@"
   fi
 }
 
@@ -978,7 +978,13 @@ if ! $SKIP_DASHBOARD; then
       fi
       if [ ! -f "$DASHBOARD_DIR/package.json" ]; then
         rm -rf "$DASHBOARD_DIR"
-        warn "Failed to download infra-dashboard (check network / GitHub token). Retry later:"
+        warn "Failed to download infra-dashboard"
+        if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+          warn "这是私有仓库，需要 GitHub Token 才能下载"
+          warn "重新运行 setup.sh 时填写 GitHub Token，或手动克隆:"
+        else
+          warn "请检查网络连接和 GitHub Token 权限，或手动克隆:"
+        fi
         warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
       fi
     fi
