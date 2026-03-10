@@ -37,11 +37,11 @@ To crawl a URL, run the following command structure using `run_command`.
 
 ```bash
 # Option 1: Using uv (Recommended)
-cd "$HOME/clawd/skills/crawl4ai"
+cd "<skill-directory>" # resolve from skill location
 uv run scripts/engine.py --url "https://example.com"
 
 # Option 2: Using python (if uv is not available, requires dependencies installed)
-cd "$HOME/clawd/skills/crawl4ai"
+cd "<skill-directory>" # resolve from skill location
 pip install -r pyproject.toml # (pseudo-command, install dependecies first)
 python scripts/engine.py --url "https://example.com"
 ```

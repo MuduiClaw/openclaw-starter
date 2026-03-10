@@ -21,8 +21,8 @@ import os
 import urllib.request
 from typing import Optional, List, Dict
 
-ANTIGRAVITY_URL = "http://127.0.0.1:8045/v1/chat/completions"
-ANTIGRAVITY_KEY = "sk-e97ef24d4931482093b3889be6517959"
+ANTIGRAVITY_URL = os.environ.get("ANTIGRAVITY_URL", "http://127.0.0.1:8045/v1/chat/completions")
+ANTIGRAVITY_KEY = os.environ.get("ANTIGRAVITY_KEY", "")
 DEFAULT_MODEL = "gemini-3.1-pro-high"
 
 import re

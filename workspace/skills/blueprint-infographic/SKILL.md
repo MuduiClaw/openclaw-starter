@@ -12,7 +12,7 @@ description_zh: "蓝图风格信息图生成：5 主题 x 4 布局 x 2 字体 = 
 
 ### 一键生成（推荐）
 ```bash
-cd ~/clawd/skills/blueprint-infographic
+cd "$(dirname "$0")/.." # or the skill directory
 node scripts/generate.mjs "AI时代的个人品牌建设" --output output/result.png
 ```
 
@@ -159,7 +159,7 @@ node scripts/generate.mjs "文章标题" \
 在 cron agentTurn prompt 中：
 ```
 用 blueprint-infographic skill 为这篇文章生成信息图：
-cd ~/clawd/skills/blueprint-infographic && node scripts/generate.mjs "主题"
+node scripts/generate.mjs "主题"
 ```
 
 ### 输出到媒体目录（供 message tool 发送）
