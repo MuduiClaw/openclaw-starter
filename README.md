@@ -60,7 +60,7 @@ cd openclaw-starter
 
 #### 选项 1：MiniMax M2.5（推荐，最快上手）
 
-[MiniMax M2.5](https://www.minimax.io/news/minimax-m25) 是面向编程和复杂任务优化的模型，**注册即送免费额度**。
+[MiniMax M2.5](https://www.minimax.io/news/minimax-m25) 是面向编程和复杂任务优化的模型，**价格便宜**。
 
 1. 去 [MiniMax 开放平台](https://platform.minimax.io/) 注册账号
 2. 进入 API Keys 页面创建 key

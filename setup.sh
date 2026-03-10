@@ -625,10 +625,10 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   # --- LLM Model Selection ---
   echo ""
   printf "${BOLD}     LLM 模型 — 选择方式:${NC}\n"
-  printf "       ${CYAN}1.${NC} MiniMax M2.5 ${DIM}(免费额度，推荐新手)${NC}\n"
+  printf "       ${CYAN}1.${NC} MiniMax M2.5 ${DIM}(价格便宜，推荐)${NC}\n"
   printf "       ${CYAN}2.${NC} Anthropic API Key ${DIM}(按量付费)${NC}\n"
   printf "       ${CYAN}3.${NC} Anthropic setup-token ${DIM}(用 Claude Pro/Max 订阅额度)${NC}\n"
-  printf "       ${DIM}       MiniMax 注册: https://platform.minimax.io (免费送额度)${NC}\n"
+  printf "       ${DIM}       MiniMax 注册: https://platform.minimax.io${NC}\n"
   printf "       ${DIM}       Anthropic: https://docs.openclaw.ai/providers/anthropic${NC}\n"
   echo ""
   ask "> "
