@@ -364,7 +364,7 @@ fi
 progress_done "MCP servers"
 
 # --- qmd (semantic memory search — installed from source, needs bun) ---
-QMD_DIR="${BREW_PREFIX}/lib/qmd"
+QMD_DIR="${HOME}/.local/lib/qmd"
 if ! command -v qmd &>/dev/null; then
   # Install bun if missing
   if ! command -v bun &>/dev/null; then
@@ -384,7 +384,8 @@ if ! command -v qmd &>/dev/null; then
       cd "$QMD_DIR" || true
       bun install 2>/dev/null || true
       # Create global bin wrapper
-      QMD_BIN="${BREW_PREFIX}/bin/qmd"
+      QMD_BIN="${HOME}/.local/bin/qmd"
+      mkdir -p "${HOME}/.local/bin"
       if [ ! -f "$QMD_BIN" ]; then
         cat > "$QMD_BIN" << 'QBIN'
 #!/bin/bash
@@ -823,7 +824,7 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   # Generate gateway auth token (reuse existing if reconfiguring)
   EXISTING_GW_TOKEN=""
   if [ -f "$EXISTING_CONFIG" ]; then
-    EXISTING_GW_TOKEN=$(python3 -c "import json; c=json.load(open('$EXISTING_CONFIG')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null || true)
+    EXISTING_GW_TOKEN=$(python3 -c "import json; c=json.load(open('$EXISTING_CONFIG')); print(c.get('gateway',{}).get('auth',{}).get('token','') or c.get('gateway',{}).get('token',''))" 2>/dev/null || true)
   fi
   GATEWAY_TOKEN="${EXISTING_GW_TOKEN:-$(openssl rand -hex 24)}"
 
