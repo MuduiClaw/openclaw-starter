@@ -154,7 +154,7 @@ except: pass
   echo ""
   info "以下内容未自动删除（可能被其他项目使用）："
   printf "   ${DIM}npm 全局包:${NC}  npm uninstall -g openclaw @openai/codex @anthropic-ai/claude-code @google/gemini-cli @steipete/oracle mcporter clawhub playwright @upstash/context7-mcp\n"
-  printf "   ${DIM}Homebrew 包:${NC} brew uninstall node@24 git tailscale\n"
+  printf "   ${DIM}Homebrew 包:${NC} brew uninstall node git tailscale\n"
   printf "   ${DIM}Bun 运行时:${NC}  rm -rf ~/.bun\n"
   printf "   ${DIM}uv 运行时:${NC}   rm -rf ~/.local/bin/uv ~/.local/bin/uvx\n"
   printf "   ${DIM}Shell PATH:${NC}  检查 ~/.zprofile 删除 OpenClaw 追加的 PATH 行\n"
@@ -309,30 +309,30 @@ else
   progress_done "Homebrew"
 fi
 
-# --- Node.js ---
-NODE24_BIN="${BREW_PREFIX}/opt/node@24/bin"
+# --- Node.js (v25+ preferred — must match infra-dashboard native addons) ---
 if ! command -v node &>/dev/null; then
   info "Installing Node.js..."
-  brew install node@24
-  export PATH="${NODE24_BIN}:$PATH"
+  brew install node
   hash -r
   if ! command -v node &>/dev/null; then
-    fatal "Node.js installed but not on PATH. Try: export PATH=\"${NODE24_BIN}:\$PATH\""
+    fatal "Node.js installed but not on PATH. Run: eval \"\$(brew shellenv)\""
   fi
   success "Node.js $(node --version)"
 else
   NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
-  if [[ "$NODE_VERSION" -lt 20 ]]; then
-    warn "Node.js v${NODE_VERSION} detected, v20+ recommended"
-    info "Installing Node.js 24..."
-    brew install node@24
-    export PATH="${NODE24_BIN}:$PATH"
+  if [[ "$NODE_VERSION" -lt 24 ]]; then
+    warn "Node.js v${NODE_VERSION} detected, v25+ recommended (native addon compatibility)"
+    info "Installing latest Node.js..."
+    brew install node
+    # Prefer latest over old version
+    brew link --overwrite node 2>/dev/null || true
     hash -r
     success "Node.js $(node --version)"
   else
     progress_done "Node.js $(node --version)"
   fi
 fi
+NODE_BIN_DIR="$(dirname "$(command -v node)")"
 
 # --- Git ---
 if ! command -v git &>/dev/null; then
@@ -370,7 +370,7 @@ else
 fi
 
 # --- npm globals (coding agents + tools) ---
-# Ensure npm global bin is on PATH (covers keg-only node@24)
+# Ensure npm global bin is on PATH
 NPM_BIN="$(npm config get prefix 2>/dev/null)/bin"
 if [[ -d "$NPM_BIN" ]] && [[ ":$PATH:" != *":$NPM_BIN:"* ]]; then
   export PATH="$NPM_BIN:$PATH"
@@ -418,8 +418,13 @@ if ! command -v qmd &>/dev/null; then
   # Install bun if missing
   if ! command -v bun &>/dev/null; then
     info "Installing bun (for qmd)..."
-    curl -fsSL https://bun.sh/install | bash 2>/dev/null || true
-    export PATH="$HOME/.bun/bin:$PATH"
+    if curl --connect-timeout 10 -fsSL https://bun.sh/install | bash 2>/dev/null; then
+      export PATH="$HOME/.bun/bin:$PATH"
+    elif npm i -g bun 2>/dev/null; then
+      hash -r
+    else
+      warn "bun install failed (curl + npm fallback both failed)"
+    fi
   fi
 
   if command -v bun &>/dev/null; then
@@ -497,16 +502,24 @@ fi
 # --- Persist PATH in shell profile (so new terminals find node/openclaw/bun) ---
 SHELL_PROFILE="${HOME}/.zprofile"
 PATH_MARKER="# OpenClaw — Node.js & tools PATH"
+NODE_BIN_FOR_PROFILE="$(dirname "$(command -v node)")"
 if ! grep -q "$PATH_MARKER" "$SHELL_PROFILE" 2>/dev/null; then
   cat >> "$SHELL_PROFILE" << PATHEOF
 
 ${PATH_MARKER} (added by setup.sh)
-export PATH="${NODE24_BIN}:\$HOME/.bun/bin:\$HOME/.local/bin:\$PATH"
+export PATH="${NODE_BIN_FOR_PROFILE}:\$HOME/.bun/bin:\$HOME/.local/bin:\$PATH"
 eval "\$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null
 PATHEOF
   progress_done "Shell PATH → ~/.zprofile"
 else
-  progress_done "Shell PATH (already configured)"
+  # Update existing PATH line if node location changed (e.g., node@24 → node v25)
+  OLD_NODE_PATH=$(grep -A1 "$PATH_MARKER" "$SHELL_PROFILE" 2>/dev/null | grep "export PATH=" | head -1 | sed 's/export PATH="//' | cut -d: -f1 | sed 's/"//')
+  if [[ -n "$OLD_NODE_PATH" ]] && [[ "$OLD_NODE_PATH" != "$NODE_BIN_FOR_PROFILE" ]]; then
+    sed -i '' "s|${OLD_NODE_PATH}|${NODE_BIN_FOR_PROFILE}|g" "$SHELL_PROFILE"
+    progress_done "Shell PATH updated (${OLD_NODE_PATH} → ${NODE_BIN_FOR_PROFILE})"
+  else
+    progress_done "Shell PATH (already configured)"
+  fi
 fi
 
 # ============================================================================
@@ -1007,6 +1020,11 @@ if ! $SKIP_DASHBOARD; then
     mkdir -p "$DASHBOARD_DIR"
 
     if curl --connect-timeout 10 --max-time 120 -fsSL "$DASHBOARD_RELEASE_URL" | tar xz -C "$DASHBOARD_DIR" 2>/dev/null; then
+      # Rebuild native addons for local Node version (tarball may be built on different Node)
+      if [ -d "$DASHBOARD_DIR/node_modules/better-sqlite3" ]; then
+        info "Rebuilding native addons for Node $(node --version)..."
+        (cd "$DASHBOARD_DIR" && npm rebuild better-sqlite3 2>/dev/null) || warn "Native addon rebuild failed — usage page may not work"
+      fi
       success "infra-dashboard downloaded"
     else
       rm -rf "$DASHBOARD_DIR"
