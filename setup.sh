@@ -1041,7 +1041,7 @@ if ! $SKIP_DASHBOARD; then
     { "name": "uv", "command": "uv", "versionArgs": ["--version"] },
     { "name": "bun", "command": "bun", "versionArgs": ["--version"] }
   ],
-  "modules": ["运行态", "工程", "基建", "知识", "配置"],
+  "modules": ["运行态", "基建", "知识", "配置"],
   "projects": [
     { "key": "openclaw-workspace", "path": "~/clawd", "repo": "" },
     { "key": "infra-dashboard", "path": "~/projects/infra-dashboard", "repo": "MuduiClaw/infra-dashboard" }
