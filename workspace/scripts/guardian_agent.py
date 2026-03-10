@@ -427,7 +427,7 @@ class HealthChecker:
         return self._is_service_loaded()
 
     def simple_restart(self):
-        """Layer 1 简单重启 — 走统一入口脚本（需 Mudui DM 确认）"""
+        """Layer 1 简单重启 — 走统一入口脚本（需 owner 确认）"""
         log.info("Layer 1: 提交重启请求 (via safe-gateway-restart.sh)")
 
         # 关键：先确保服务在 launchd 里，不在就 re-install
@@ -439,11 +439,11 @@ class HealthChecker:
         )
         if rc == 0:
             # Request already pending
-            log.info("Layer 1: 重启请求已存在，等待 Mudui 确认")
+            log.info("Layer 1: 重启请求已存在，等待 owner 确认")
             return False  # 不算成功（还没重启），但也不升级
         elif rc == 3:
             # Request filed, waiting for approval
-            log.info("Layer 1: 重启请求已提交，等待 Mudui DM 确认")
+            log.info("Layer 1: 重启请求已提交，等待 owner 确认")
             return False  # 不升级到下一 Layer，等待人工确认
         elif rc == 1:
             log.warning("Layer 1: 重启请求被拒（config invalid）: %s", stdout[:200] if stdout else "")
@@ -605,15 +605,15 @@ class RollbackManager:
             return False, "GitHub 远程配置恢复后仍不健康"
 
     def _restart_and_verify(self):
-        """Layer 3 重启请求 — 走统一入口（需 Mudui 确认）"""
+        """Layer 3 重启请求 — 走统一入口（需 owner 确认）"""
         rc, stdout, stderr = run_cmd(
             f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L3 config rollback verify'",
             timeout=30
         )
         # rc=3 means request filed (pending approval), rc=0 means already pending
-        # Either way, Guardian can't restart without Mudui approval
+        # Either way, Guardian can't restart without owner approval
         if rc in (0, 3):
-            log.info("Layer 3: 重启请求已提交，等待 Mudui 确认")
+            log.info("Layer 3: 重启请求已提交，等待 owner 确认")
         return False  # Always false — actual restart happens after human approval
 
 
@@ -731,10 +731,10 @@ class GuardianAgent:
             self._save()
             return
 
-        # 如果重启请求已提交（等待 Mudui 确认），不再升级
+        # 如果重启请求已提交（等待 owner 确认），不再升级
         restart_request = os.path.join(OPENCLAW_DIR, "state", "gateway-restart-request.json")
         if os.path.exists(restart_request):
-            log.info("重启请求已待审批，等待 Mudui DM 确认，不升级")
+            log.info("重启请求已待审批，等待 owner 确认，不升级")
             self._save()
             return
 
@@ -769,15 +769,15 @@ class GuardianAgent:
             if stderr:
                 log.warning("doctor stderr: %s", stderr[:200])
 
-            # doctor 后重启请求 — 走统一入口（需 Mudui 确认）
+            # doctor 后重启请求 — 走统一入口（需 owner 确认）
             self.health._ensure_service_installed()
             rc_restart, _, _ = run_cmd(
                 f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L1.5 doctor fix verify'",
                 timeout=30
             )
             if rc_restart in (0, 3):
-                log.info("Layer 1.5: doctor 完成，重启请求已提交，等待 Mudui 确认")
-                # 不立即标记为成功——等 Mudui 确认重启后才算
+                log.info("Layer 1.5: doctor 完成，重启请求已提交，等待 owner 确认")
+                # 不立即标记为成功——等 owner 确认重启后才算
                 return
             log.warning("Layer 1.5: doctor --fix 后仍不健康，升级到 Layer 3")
         elif not GUARDIAN_ALLOW_DOCTOR_FIX:

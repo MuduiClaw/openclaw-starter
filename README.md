@@ -427,6 +427,36 @@ openclaw-starter/
 - Gateway Token 会自动保留（不会因重配而失效）
 - 用户在 `~/clawd/skills/` 等目录下新增的文件不会被删除
 
+### LaunchAgent 后台服务
+
+setup.sh 会创建 8 个 macOS LaunchAgent（位于 `~/Library/LaunchAgents/`）：
+
+| 服务 | plist ID | 作用 |
+|------|----------|------|
+| Gateway | `ai.openclaw.gateway` | OpenClaw 核心进程 |
+| Guardian | `ai.openclaw.guardian` | 3 层自动恢复守护 |
+| Dashboard | `com.openclaw.infra-dashboard` | 监控面板 |
+| MCP Bridge | `com.openclaw.mcp-bridge` | MCP 服务 |
+| 备份 | `ai.openclaw.backup` | workspace git 自动备份 |
+| 日志轮转 | `ai.openclaw.log-rotate` | 日志文件清理 |
+| Session 清理 | `ai.openclaw.sessions-prune-cron` | 过期 session 清理 |
+| 防休眠 | `ai.openclaw.caffeinate` | 保持 Mac 在线 |
+
+**PATH 注入机制**：每个 plist 的 `EnvironmentVariables.PATH` 由 setup.sh 动态生成，包含 Node.js、bun、`~/.local/bin` 等路径。如果更换了 Node.js 版本，需要重跑 `setup.sh` 或手动更新 plist。
+
+**常见操作**：
+```bash
+# 查看服务状态
+launchctl list | grep -E "openclaw|infra-dashboard"
+
+# 重启某个服务
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway
+
+# 查看服务日志
+tail -f ~/.openclaw/logs/gateway.log
+tail -f ~/.openclaw/logs/guardian.log
+```
+
 ### 访问面板
 - 详见上方 [两个面板](#两个面板) 章节
 - 如果看到"链接已失效"提示，说明书签里的 token 过期了，用最新密码重新登录即可

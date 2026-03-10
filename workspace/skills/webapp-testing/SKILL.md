@@ -22,7 +22,7 @@ To test local web applications, use Playwright to connect to existing Chrome CDP
 | 用途 | CDP 端口 | 何时用 |
 |------|----------|--------|
 | 截图/测试/无登录态 | `18800` (openclaw headless) | **默认选这个** |
-| 需要 XHS/X 登录态（木对） | `18802` | XHS 个人号 / X 主号 |
+| 需要登录态的站点 | `18802` | 已登录的 Chrome 实例 |
 
 ## Decision Tree: Choosing Your Approach
 

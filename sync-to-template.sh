@@ -13,7 +13,7 @@ DRY_RUN=false
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+# BLUE='\033[0;34m'  # reserved
 BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
@@ -163,7 +163,7 @@ echo -e "${DIM}  (config templates are manually maintained, not auto-synced)${NC
 # ============================================================================
 echo ""
 echo -e "${BOLD}Secret scan:${NC}"
-LEAKS=$(grep -rE '(sk-ant-|sk-proj-|AKIA[A-Z0-9]{16}|ghp_[a-zA-Z0-9]{36}|xoxb-|wangshufu|hxrmudui)' \
+LEAKS=$(grep -rE '(sk-ant-|sk-proj-|AKIA[A-Z0-9]{16}|ghp_[a-zA-Z0-9]{36}|xoxb-)' \
   --include='*.md' --include='*.sh' --include='*.json' --include='*.json5' \
   --include='*.py' --include='*.ts' --include='*.js' --include='*.yml' \
   --exclude-dir=node_modules --exclude-dir=.git \

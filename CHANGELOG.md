@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.3.1] - 2026-03-11
+
+### 公开发布清理
+- **全量脱敏**：清理 guardian_agent.py、SKILL.md、AGENTS.md、specs 中的私有名字引用
+- **新增 workspace 模板**：`SOUL.md`, `IDENTITY.md`, `USER.md`, `TOOLS.md` 通用骨架 + 注释引导
+- **Dashboard v1.1.0 发布**：包含 visibleModules 过滤、force-dynamic、Node v25 native addon
+- **LaunchAgent 文档**：README 新增完整的 8 个 LaunchAgent 说明 + PATH 机制 + 常见操作
+- **添加 MIT License**
+
+### Node v25 升级
+- `brew install node` 升级到 v25（最低 v24）
+- bun 安装失败 → fallback `npm i -g bun`
+- `.zprofile` PATH 自动更新
+- infra-dashboard `better-sqlite3` native addon 自动 rebuild
+
+### 新功能
+- **`--update-dashboard` 命令**：备份→下载→rebuild→重启→验证
+- **Git 质量门禁**：shellcheck、JSON 语法检查、提交范围锁（>5 文件需 `[scope-ack]`）、Conventional Commits 检查
+- **README 截图**：Control UI + Infra Dashboard 登录页截图
+
+### 改进
+- Skills 清理：移除 login-machine、修复 blueprint-infographic/crawl4ai 硬编码路径、修复 kb-rag API key 泄露
+- 减少 cron 到 7 个通用模板（移除 7 个个人内容相关）
+- Dashboard 模块精简为 `["运行态", "基建", "知识", "配置"]`
+- 完整卸载流程（清理 cron、dashboard、qmd、配置）
+- 新安装自带 `memory/archive/lessons.md` + `memory/journal/.gitkeep`
+
+### 修复
+- native addon 打包到 standalone tarball（release-dashboard.sh）
+- native addon rebuild 失败时 fallback 到 fresh install
+
 ## [1.3.0] - 2026-03-10
 
 ### 安全修复（Oracle 审查 9 项）
