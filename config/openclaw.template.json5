@@ -22,7 +22,11 @@
   // === Gateway ===
   "gateway": {
     "port": 3456,
-    "mode": "production"
+    "mode": "production",
+    "auth": {
+      "mode": "token"
+      // token 由 setup.sh 自动生成
+    }
   },
 
   // === Agent 默认配置 ===

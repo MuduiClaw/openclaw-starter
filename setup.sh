@@ -807,6 +807,9 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
     FALLBACK_LINE=""
   fi
 
+  # Generate gateway auth token
+  GATEWAY_TOKEN=$(openssl rand -hex 24)
+
   # Generate openclaw.json using python3 (safe from shell injection)
   _OC_PRIMARY_MODEL="$PRIMARY_MODEL" \
   _OC_FALLBACK="${FALLBACK_LINE:+minimax/MiniMax-M2.5}" \
@@ -820,6 +823,7 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   _OC_FEISHU_APP_SECRET="${FEISHU_APP_SECRET:-}" \
   _OC_CHANNEL_TYPE="${CHANNEL_TYPE:-}" \
   _OC_STATE_DIR="$OPENCLAW_STATE" \
+  _OC_GW_TOKEN="$GATEWAY_TOKEN" \
   python3 -c '
 import json, os
 
@@ -878,7 +882,7 @@ elif ch == "feishu" and E("_OC_FEISHU_APP_ID"):
 state = E("_OC_STATE_DIR")
 config = {
     "env": {"vars": env_vars},
-    "gateway": {"port": 3456, "mode": "local"},
+    "gateway": {"port": 3456, "mode": "local", "auth": {"mode": "token", "token": E("_OC_GW_TOKEN")}},
     "agents": {"defaults": {"model": model_block}},
     "models": {"mode": "merge", "providers": providers},
     "memory": {
@@ -1240,7 +1244,14 @@ printf "   ${BOLD}Config:${NC}      %s\n" "${OPENCLAW_STATE}/openclaw.json"
 printf "   ${BOLD}Control UI:${NC}  ${CYAN}http://localhost:3456${NC}  ${DIM}(跟 AI 对话)${NC}\n"
 
 if [ -d "${HOME}/projects/infra-dashboard" ]; then
-  printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}  ${DIM}(基建监控)${NC}\n"
+  DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
+  if [ -f "$DASHBOARD_ENV" ]; then
+    _DASH_T=$(grep DASHBOARD_TOKEN "$DASHBOARD_ENV" | sed 's/export DASHBOARD_TOKEN=//' | sed 's/DASHBOARD_TOKEN=//')
+    printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001/?token=${_DASH_T}${NC}  ${DIM}(基建监控)${NC}\n"
+    printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}\n"
+  else
+    printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}  ${DIM}(基建监控)${NC}\n"
+  fi
 fi
 
 # Auto-open both dashboards in browser
