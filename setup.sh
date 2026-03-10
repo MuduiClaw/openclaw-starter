@@ -25,6 +25,7 @@ UNINSTALL=false
 SKIP_DASHBOARD=false
 NO_TAILSCALE=false
 NO_CAFFEINATE=false
+UPDATE_DASHBOARD=false
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -58,8 +59,9 @@ while [[ $# -gt 0 ]]; do
     --no-tailscale)    NO_TAILSCALE=true; shift ;;
     --no-caffeinate)   NO_CAFFEINATE=true; shift ;;
     --uninstall)       UNINSTALL=true; shift ;;
+    --update-dashboard) UPDATE_DASHBOARD=true; shift ;;
     --help|-h)
-      echo "Usage: ./setup.sh [--workspace-dir ~/clawd] [--no-launchagents] [--skip-dashboard] [--no-tailscale] [--no-caffeinate] [--uninstall]"
+      echo "Usage: ./setup.sh [--workspace-dir ~/clawd] [--no-launchagents] [--skip-dashboard] [--no-tailscale] [--no-caffeinate] [--update-dashboard] [--uninstall]"
       exit 0 ;;
     *) fatal "Unknown flag: $1" ;;
   esac
@@ -158,6 +160,71 @@ except: pass
   printf "   ${DIM}Bun 运行时:${NC}  rm -rf ~/.bun\n"
   printf "   ${DIM}uv 运行时:${NC}   rm -rf ~/.local/bin/uv ~/.local/bin/uvx\n"
   printf "   ${DIM}Shell PATH:${NC}  检查 ~/.zprofile 删除 OpenClaw 追加的 PATH 行\n"
+  exit 0
+fi
+
+# ============================================================================
+# UPDATE DASHBOARD MODE
+# ============================================================================
+if $UPDATE_DASHBOARD; then
+  DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
+  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/openclaw-starter/releases/latest/download/infra-dashboard-standalone.tar.gz"
+
+  step "📦" "Updating infra-dashboard"
+
+  # Backup current version
+  if [ -d "$DASHBOARD_DIR" ] && [ -f "$DASHBOARD_DIR/server.js" ]; then
+    BACKUP="${DASHBOARD_DIR}.bak.$(date +%Y%m%d%H%M)"
+    cp -a "$DASHBOARD_DIR" "$BACKUP"
+    info "Backed up current version → $(basename "$BACKUP")"
+  fi
+
+  # Download new version
+  info "Downloading latest release..."
+  TMPDIR_DL=$(mktemp -d)
+  if curl --connect-timeout 10 --max-time 120 -fsSL "$DASHBOARD_RELEASE_URL" | tar xz -C "$TMPDIR_DL" 2>/dev/null; then
+    # Verify download
+    if [ -f "$TMPDIR_DL/server.js" ]; then
+      rm -rf "$DASHBOARD_DIR"
+      mv "$TMPDIR_DL" "$DASHBOARD_DIR"
+
+      # Rebuild native addons
+      if [ -d "$DASHBOARD_DIR/node_modules/better-sqlite3" ]; then
+        info "Rebuilding native addons for Node $(node --version)..."
+        (cd "$DASHBOARD_DIR" && npm rebuild better-sqlite3 2>/dev/null) || warn "Native addon rebuild failed"
+      fi
+
+      # Restart dashboard service
+      DASH_PLIST="${HOME}/Library/LaunchAgents/com.openclaw.infra-dashboard.plist"
+      if [ -f "$DASH_PLIST" ]; then
+        launchctl unload "$DASH_PLIST" 2>/dev/null || true
+        launchctl load "$DASH_PLIST" 2>/dev/null || true
+        info "Dashboard service restarted"
+      fi
+
+      success "infra-dashboard updated"
+      info "Backup at: $(basename "$BACKUP")"
+
+      # Verify
+      sleep 2
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/ 2>/dev/null || echo "000")
+      if [[ "$HTTP_CODE" == "200" ]] || [[ "$HTTP_CODE" == "401" ]]; then
+        success "Dashboard responding (HTTP $HTTP_CODE)"
+      else
+        warn "Dashboard not responding (HTTP $HTTP_CODE) — check: launchctl list | grep dashboard"
+      fi
+    else
+      rm -rf "$TMPDIR_DL"
+      error "Downloaded archive missing server.js — update aborted"
+      info "Backup preserved at: $(basename "${BACKUP:-none}")"
+      exit 1
+    fi
+  else
+    rm -rf "$TMPDIR_DL"
+    error "Download failed (check network)"
+    exit 1
+  fi
+
   exit 0
 fi
 

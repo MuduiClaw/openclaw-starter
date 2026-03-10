@@ -206,7 +206,7 @@ openclaw channels add
      Disk: 402GB free ✓  RAM: 18GB ✓
 
 [1/3] 依赖安装
-     Xcode CLT ✓  Homebrew ✓  Node.js v24 ✓  Bun ✓  uv ✓
+     Xcode CLT ✓  Homebrew ✓  Node.js v25 ✓  Bun ✓  uv ✓
      OpenClaw ✓  Codex ✓  Claude Code ✓  Gemini CLI ✓
      qmd ✓  mcporter ✓  clawhub ✓  oracle ✓
 
@@ -234,6 +234,47 @@ openclaw channels add
       (在 Control UI 里粘贴此 token 即可开始对话)
    下一步:     在 Discord/飞书跟你的 AI 说句话试试
 ```
+
+## 两个面板
+
+安装完成后，你有两个本地 Web 面板：
+
+### Control UI — 跟 AI 对话
+
+| | |
+|---|---|
+| **地址** | `http://localhost:3456` |
+| **用途** | 网页版聊天界面，直接跟 AI 对话 |
+| **登录** | 粘贴安装完成时显示的 **Gateway Token** |
+
+打开页面后，在「网关令牌」框里粘贴 token，点「连接」即可开始对话。
+
+> Token 忘了？运行：
+> ```bash
+> python3 -c "import json; c=json.load(open('$HOME/.openclaw/openclaw.json')); print(c['gateway']['auth']['token'])"
+> ```
+
+### Infra Dashboard — 基建监控
+
+| | |
+|---|---|
+| **地址** | `http://localhost:3001` |
+| **用途** | 实时监控：服务状态、工具版本、模型用量、Cron 任务、LaunchAgent 健康 |
+| **登录** | 用安装完成时终端显示的带 `?token=xxx` 链接打开（自动登录），或手动输入密码 `0000` |
+
+> 💡 **把带 token 的链接保存为浏览器书签**，以后打开直接进，不用每次输密码。
+
+### 更新面板
+
+infra-dashboard 不会自动更新。当有新版本发布时：
+
+```bash
+cd ~/openclaw-starter
+git pull
+./setup.sh --update-dashboard
+```
+
+一条命令完成：备份旧版 → 下载最新 → 重编译 native addon → 重启服务。
 
 ## 安装后
 
@@ -304,7 +345,7 @@ npm uninstall -g openclaw @openai/codex @anthropic-ai/claude-code \
   @upstash/context7-mcp
 
 # Homebrew 包
-brew uninstall node@24 git tailscale
+brew uninstall node git tailscale
 
 # Bun 运行时
 rm -rf ~/.bun
@@ -318,12 +359,13 @@ rm -rf ~/.local/bin/uv ~/.local/bin/uvx
 ### 安装选项
 
 ```bash
-./setup.sh                    # 标准安装
-./setup.sh --no-launchagents  # 不安装后台服务
-./setup.sh --skip-dashboard   # 不安装监控面板
-./setup.sh --no-tailscale     # 跳过 Tailscale 远程访问
-./setup.sh --no-caffeinate    # 不配置防休眠
-./setup.sh --uninstall        # 完全卸载
+./setup.sh                      # 标准安装
+./setup.sh --update-dashboard   # 更新 infra-dashboard 到最新版
+./setup.sh --no-launchagents    # 不安装后台服务
+./setup.sh --skip-dashboard     # 不安装监控面板
+./setup.sh --no-tailscale       # 跳过 Tailscale 远程访问
+./setup.sh --no-caffeinate      # 不配置防休眠
+./setup.sh --uninstall          # 完全卸载
 ```
 
 ## 安全设计
@@ -382,8 +424,7 @@ openclaw-starter/
 - 用户在 `~/clawd/skills/` 等目录下新增的文件不会被删除
 
 ### 访问面板
-- **Control UI** (`localhost:3456`)：需要粘贴安装完成时显示的 Gateway Token
-- **infra-dashboard** (`localhost:3001`)：用安装完成时显示的带 `?token=` 的链接，保存为书签
+- 详见上方 [两个面板](#两个面板) 章节
 - 如果看到"链接已失效"提示，说明书签里的 token 过期了，用最新密码重新登录即可
 
 ### Intel Mac
