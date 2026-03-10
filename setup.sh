@@ -190,8 +190,18 @@ if $UPDATE_DASHBOARD; then
 
       # Rebuild native addons
       if [ -d "$DASHBOARD_DIR/node_modules/better-sqlite3" ]; then
-        info "Rebuilding native addons for Node $(node --version)..."
-        (cd "$DASHBOARD_DIR" && npm rebuild better-sqlite3 2>/dev/null) || warn "Native addon rebuild failed"
+        SQLITE_NODE="$DASHBOARD_DIR/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+        if [ ! -f "$SQLITE_NODE" ] || ! node -e "require('$SQLITE_NODE')" 2>/dev/null; then
+          info "Rebuilding native addon for Node $(node --version)..."
+          if ! (cd "$DASHBOARD_DIR" && npm rebuild better-sqlite3 2>/dev/null); then
+            TMPBUILD=$(mktemp -d)
+            if (cd "$TMPBUILD" && npm init -y >/dev/null 2>&1 && npm install better-sqlite3 2>/dev/null); then
+              BUILT_NODE=$(find "$TMPBUILD" -name "better_sqlite3.node" -type f 2>/dev/null | head -1)
+              [ -n "$BUILT_NODE" ] && mkdir -p "$(dirname "$SQLITE_NODE")" && cp "$BUILT_NODE" "$SQLITE_NODE"
+            fi
+            rm -rf "$TMPBUILD"
+          fi
+        fi
       fi
 
       # Restart dashboard service
@@ -1089,8 +1099,27 @@ if ! $SKIP_DASHBOARD; then
     if curl --connect-timeout 10 --max-time 120 -fsSL "$DASHBOARD_RELEASE_URL" | tar xz -C "$DASHBOARD_DIR" 2>/dev/null; then
       # Rebuild native addons for local Node version (tarball may be built on different Node)
       if [ -d "$DASHBOARD_DIR/node_modules/better-sqlite3" ]; then
-        info "Rebuilding native addons for Node $(node --version)..."
-        (cd "$DASHBOARD_DIR" && npm rebuild better-sqlite3 2>/dev/null) || warn "Native addon rebuild failed — usage page may not work"
+        SQLITE_NODE="$DASHBOARD_DIR/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+        if [ ! -f "$SQLITE_NODE" ] || ! node -e "require('$SQLITE_NODE')" 2>/dev/null; then
+          info "Rebuilding native addon for Node $(node --version)..."
+          if (cd "$DASHBOARD_DIR" && npm rebuild better-sqlite3 2>/dev/null); then
+            success "Native addon rebuilt"
+          else
+            # Fallback: fresh install in temp dir, copy .node file
+            TMPBUILD=$(mktemp -d)
+            if (cd "$TMPBUILD" && npm init -y >/dev/null 2>&1 && npm install better-sqlite3 2>/dev/null); then
+              BUILT_NODE=$(find "$TMPBUILD" -name "better_sqlite3.node" -type f 2>/dev/null | head -1)
+              if [ -n "$BUILT_NODE" ]; then
+                mkdir -p "$(dirname "$SQLITE_NODE")"
+                cp "$BUILT_NODE" "$SQLITE_NODE"
+                success "Native addon compiled (fallback)"
+              fi
+            else
+              warn "Native addon build failed — usage/history page may not work"
+            fi
+            rm -rf "$TMPBUILD"
+          fi
+        fi
       fi
       success "infra-dashboard downloaded"
     else

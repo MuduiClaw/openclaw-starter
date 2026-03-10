@@ -60,6 +60,21 @@ fi
 info "Packaging standalone tarball..."
 cp -r .next/static "${STANDALONE_DIR}/.next/static" 2>/dev/null || true
 cp -r public "${STANDALONE_DIR}/public" 2>/dev/null || true
+
+# --- Copy native addons (Next.js standalone strips .node binaries) ---
+# better-sqlite3: required for /api/usage/history
+SQLITE_SRC="${DASHBOARD_DIR}/node_modules/better-sqlite3"
+SQLITE_DST="${STANDALONE_DIR}/node_modules/better-sqlite3"
+if [[ -d "$SQLITE_SRC/build/Release" ]] && [[ -d "$SQLITE_DST" ]]; then
+  mkdir -p "${SQLITE_DST}/build/Release"
+  cp "${SQLITE_SRC}/build/Release/better_sqlite3.node" "${SQLITE_DST}/build/Release/" 2>/dev/null || true
+  # Also copy binding.gyp + src for npm rebuild on different Node versions
+  cp "${SQLITE_SRC}/binding.gyp" "${SQLITE_DST}/" 2>/dev/null || true
+  cp -r "${SQLITE_SRC}/src" "${SQLITE_DST}/" 2>/dev/null || true
+  cp -r "${SQLITE_SRC}/deps" "${SQLITE_DST}/" 2>/dev/null || true
+  success "Included better-sqlite3 native addon (Node $(node --version))"
+fi
+
 cd "$STANDALONE_DIR"
 tar czf "$TARBALL" .
 TARBALL_SIZE=$(du -sh "$TARBALL" | cut -f1)
