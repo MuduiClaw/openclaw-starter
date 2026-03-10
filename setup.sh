@@ -49,6 +49,16 @@ progress_done() {
   printf "${GREEN}     %-30s ✓${NC}\n" "$1"
 }
 
+# git clone wrapper — passes GitHub token as extraheader when available
+# (avoids bash 3.2 empty-array + set -u crash)
+git_clone_auth() {
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    git -c "http.extraheader=Authorization: token ${GITHUB_TOKEN}" "$@"
+  else
+    git "$@"
+  fi
+}
+
 # --- Parse Flags ---
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -605,6 +615,14 @@ else
 fi
 
 if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
+
+  # ========================================================================
+  # Interactive config loop — user can review and redo before proceeding
+  # ========================================================================
+  CONFIG_CONFIRMED=false
+  while ! $CONFIG_CONFIRMED; do
+
+  # --- LLM Model Selection ---
   echo ""
   printf "${BOLD}     LLM 模型 — 选择方式:${NC}\n"
   printf "       ${CYAN}1.${NC} MiniMax M2.5 ${DIM}(免费额度，推荐新手)${NC}\n"
@@ -617,6 +635,8 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   read -r auth_choice
 
   MINIMAX_KEY=""
+  ANTHROPIC_MODE=""
+  ANTHROPIC_KEY=""
   case "$auth_choice" in
     1)
       ANTHROPIC_MODE="none"
@@ -678,12 +698,20 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ;;
   esac
 
+  # --- Chat Channel Selection (optional) ---
   echo ""
+  CHANNEL_TYPE=""
+  DISCORD_TOKEN=""
+  DISCORD_GUILD=""
+  DISCORD_USER=""
+  FEISHU_APP_ID=""
+  FEISHU_APP_SECRET=""
   printf "${BOLD}     Chat Channel — 选择一个:${NC}\n"
   printf "       ${CYAN}1.${NC} Discord\n"
   printf "       ${CYAN}2.${NC} 飞书 (Feishu)\n"
+  printf "       ${CYAN}3.${NC} 跳过 ${DIM}(稍后通过 Dashboard 或 openclaw channels add 配置)${NC}\n"
   echo ""
-  ask "> "
+  ask "> [3] "
   read -r channel_choice
 
   case "$channel_choice" in
@@ -709,15 +737,8 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       success "飞书 (Feishu)"
       ;;
     *)
-      warn "Invalid choice, defaulting to Discord"
-      CHANNEL_TYPE="discord"
-      ask "Discord Bot Token: "
-      read -rs DISCORD_TOKEN
-      echo ""
-      ask "Discord Guild ID: "
-      read -r DISCORD_GUILD
-      ask "Your Discord User ID: "
-      read -r DISCORD_USER
+      CHANNEL_TYPE=""
+      info "跳过频道配置（安装后运行 openclaw channels add）"
       ;;
   esac
 
@@ -726,6 +747,35 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   ask "GitHub Token (可选, 直接回车跳过): "
   read -rs GITHUB_TOKEN
   echo ""
+
+  # --- Review & Confirm ---
+  echo ""
+  printf "${BOLD}     配置确认:${NC}\n"
+  if [[ "$ANTHROPIC_MODE" == "none" ]] || [[ -z "$ANTHROPIC_KEY" ]]; then
+    printf "       模型:  MiniMax M2.5\n"
+  elif [[ "$ANTHROPIC_MODE" == "api-key" ]]; then
+    printf "       模型:  Anthropic API Key${MINIMAX_KEY:+ + MiniMax fallback}\n"
+  else
+    printf "       模型:  Anthropic OAuth${MINIMAX_KEY:+ + MiniMax fallback}\n"
+  fi
+  if [[ "$CHANNEL_TYPE" == "discord" ]]; then
+    printf "       频道:  Discord (Guild: ${DISCORD_GUILD:-未设置})\n"
+  elif [[ "$CHANNEL_TYPE" == "feishu" ]]; then
+    printf "       频道:  飞书 (App: ${FEISHU_APP_ID:-未设置})\n"
+  else
+    printf "       频道:  ${DIM}未配置（稍后添加）${NC}\n"
+  fi
+  printf "       GitHub: ${GITHUB_TOKEN:+已配置}${GITHUB_TOKEN:-${DIM}未配置${NC}}\n"
+  echo ""
+  ask "确认以上配置？[Y/n] (n=重新配置) "
+  read -r confirm_config
+  if [[ "$confirm_config" =~ ^[nN]$ ]]; then
+    info "重新开始配置..."
+    continue
+  fi
+  CONFIG_CONFIRMED=true
+
+  done  # end config loop
 
   # ========================================================================
   # VALIDATE CHANNEL CREDENTIALS
@@ -906,34 +956,36 @@ if ! $SKIP_DASHBOARD; then
 
     # Build clone URL (use GitHub token via extraheader — never embed in URL)
     DASH_CLONE_URL="https://github.com/MuduiClaw/infra-dashboard.git"
-    GIT_AUTH_ARGS=()
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-      GIT_AUTH_ARGS=(-c "http.extraheader=Authorization: token ${GITHUB_TOKEN}")
-    fi
 
     # Also clone shared-ui dependency
     SHARED_UI_DIR="${HOME}/projects/shared-ui"
     SHARED_CLONE_URL="https://github.com/MuduiClaw/shared-ui.git"
 
     # Try git clone first, fall back to tarball download (works better in China)
-    if ! git "${GIT_AUTH_ARGS[@]}" clone --depth 1 "$DASH_CLONE_URL" "$DASHBOARD_DIR" 2>/dev/null; then
+    if ! git_clone_auth clone --depth 1 "$DASH_CLONE_URL" "$DASHBOARD_DIR" 2>/dev/null; then
       info "git clone failed, trying tarball download..."
-      TARBALL_AUTH_ARGS=()
+      TARBALL_HEADER=""
       if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        TARBALL_AUTH_ARGS=(-H "Authorization: token ${GITHUB_TOKEN}")
+        TARBALL_HEADER="Authorization: token ${GITHUB_TOKEN}"
       fi
       mkdir -p "$DASHBOARD_DIR"
-      curl -sL "${TARBALL_AUTH_ARGS[@]}" https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
-        tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null || {
+      if [[ -n "$TARBALL_HEADER" ]]; then
+        curl -sL -H "$TARBALL_HEADER" https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
+          tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null
+      else
+        curl -sL https://api.github.com/repos/MuduiClaw/infra-dashboard/tarball/main | \
+          tar xz --strip-components=1 -C "$DASHBOARD_DIR" 2>/dev/null
+      fi
+      if [ ! -f "$DASHBOARD_DIR/package.json" ]; then
         rm -rf "$DASHBOARD_DIR"
         warn "Failed to download infra-dashboard (check network / GitHub token). Retry later:"
         warn "  git clone https://github.com/MuduiClaw/infra-dashboard.git ~/projects/infra-dashboard"
-      }
+      fi
     fi
 
     # Clone shared-ui if not present (infra-dashboard depends on file:../shared-ui)
     if [ ! -d "$SHARED_UI_DIR" ]; then
-      git "${GIT_AUTH_ARGS[@]}" clone --depth 1 "$SHARED_CLONE_URL" "$SHARED_UI_DIR" 2>/dev/null || \
+      git_clone_auth clone --depth 1 "$SHARED_CLONE_URL" "$SHARED_UI_DIR" 2>/dev/null || \
         warn "Failed to clone shared-ui (non-critical)"
     fi
   fi
