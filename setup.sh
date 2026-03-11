@@ -1299,12 +1299,25 @@ with open('$GW_PLIST', 'wb') as f:
       launchctl load "$GW_PLIST" 2>/dev/null || true
     fi
 
-    # Sync gateway token → dashboard.env (gateway install may auto-generate a token)
+    # Sync gateway token → dashboard.env as OPENCLAW_GATEWAY_TOKEN (for dashboard→gateway API calls)
+    # NOTE: DASHBOARD_TOKEN (login password) is set separately and must NOT be overwritten here
     DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
     GW_TOKEN=$(python3 -c "import json; c=json.load(open('${HOME}/.openclaw/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token','') or c.get('gateway',{}).get('token',''))" 2>/dev/null)
     if [[ -n "$GW_TOKEN" ]]; then
-      (umask 077; echo "export DASHBOARD_TOKEN=${GW_TOKEN}" > "$DASHBOARD_ENV")
-      success "Dashboard token synced with gateway"
+      # Append/update gateway token without clobbering DASHBOARD_TOKEN
+      if [ -f "$DASHBOARD_ENV" ]; then
+        # Remove old gateway token line if present, keep everything else
+        grep -v "OPENCLAW_GATEWAY_TOKEN" "$DASHBOARD_ENV" > "${DASHBOARD_ENV}.tmp" 2>/dev/null || true
+        echo "export OPENCLAW_GATEWAY_TOKEN=${GW_TOKEN}" >> "${DASHBOARD_ENV}.tmp"
+        (umask 077; mv "${DASHBOARD_ENV}.tmp" "$DASHBOARD_ENV")
+      else
+        (umask 077; cat > "$DASHBOARD_ENV" <<ENVEOF
+export DASHBOARD_TOKEN=0000
+export OPENCLAW_GATEWAY_TOKEN=${GW_TOKEN}
+ENVEOF
+)
+      fi
+      success "Gateway token synced to dashboard env"
     fi
 
     info "Starting Gateway..."
@@ -1431,7 +1444,14 @@ printf "${BOLD}${GREEN}🎉 你的 AI 合伙人已就绪。${NC}\n"
 echo ""
 printf "   ${BOLD}Workspace:${NC}   %s\n" "$WORKSPACE_DIR"
 printf "   ${BOLD}Config:${NC}      %s\n" "${OPENCLAW_STATE}/openclaw.json"
-printf "   ${BOLD}Control UI:${NC}  ${CYAN}http://localhost:3456${NC}  ${DIM}(跟 AI 对话)${NC}\n"
+# Build Control UI URL with gateway token for auto-auth
+_CTRL_URL="http://localhost:3456"
+_GW_T=$(python3 -c "import json; c=json.load(open('${OPENCLAW_STATE}/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null || true)
+if [[ -n "$_GW_T" ]]; then
+  _CTRL_URL="http://localhost:3456/#token=${_GW_T}"
+fi
+printf "   ${BOLD}Control UI:${NC}  ${CYAN}${_CTRL_URL}${NC}  ${DIM}(跟 AI 对话)${NC}\n"
+printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}\n"
 
 if [ -d "${HOME}/projects/infra-dashboard" ]; then
   DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
@@ -1446,7 +1466,7 @@ fi
 
 # Auto-open both dashboards in browser
 # 1. Control UI (webchat) — gateway's built-in web interface
-open "http://localhost:3456" 2>/dev/null || true
+open "${_CTRL_URL}" 2>/dev/null || true
 
 # 2. Infra dashboard — with auth token
 if [ -d "${HOME}/projects/infra-dashboard" ]; then
@@ -1459,12 +1479,12 @@ if [ -d "${HOME}/projects/infra-dashboard" ]; then
   fi
 fi
 
-# Print gateway token for user to paste into Control UI
+# Print gateway token for reference (already embedded in URLs above)
 GW_TOKEN_DISPLAY=$(python3 -c "import json; c=json.load(open('${HOME}/.openclaw/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null)
 if [[ -n "$GW_TOKEN_DISPLAY" ]]; then
   echo ""
   printf "   ${BOLD}⚡ Gateway Token:${NC} ${CYAN}${GW_TOKEN_DISPLAY}${NC}\n"
-  printf "   ${DIM}   (在 Control UI 里粘贴此 token 即可开始对话)${NC}\n"
+  printf "   ${DIM}   (已嵌入上方 URL，保存书签即可。如需手动输入，复制此 token)${NC}\n"
 fi
 
 # Show Tailscale info if available
