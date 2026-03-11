@@ -585,7 +585,7 @@ if ! grep -q "$PATH_MARKER" "$SHELL_PROFILE" 2>/dev/null; then
 
 ${PATH_MARKER} (added by setup.sh)
 export PATH="${NODE_BIN_FOR_PROFILE}:\$HOME/.bun/bin:\$HOME/.local/bin:\$PATH"
-eval "\$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null
+eval "\$(${BREW_PREFIX}/bin/brew shellenv)" 2>/dev/null
 PATHEOF
   progress_done "Shell PATH → ~/.zprofile"
 else

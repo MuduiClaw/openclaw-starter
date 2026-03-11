@@ -28,3 +28,10 @@ setup() {
 @test "config templates are present" {
   [ -f "./config/openclaw.template.json5" ]
 }
+
+@test "zprofile brew shellenv uses BREW_PREFIX not hardcoded path" {
+  # Ensure setup.sh does NOT hardcode /opt/homebrew/bin/brew in the .zprofile heredoc
+  # It should use ${BREW_PREFIX} so Intel (/usr/local) and ARM (/opt/homebrew) both work
+  ! grep -q 'eval.*\$/opt/homebrew/bin/brew shellenv' setup.sh
+  grep -q 'eval.*BREW_PREFIX.*brew shellenv' setup.sh
+}
