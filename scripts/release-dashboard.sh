@@ -48,7 +48,7 @@ info "Building infra-dashboard v${VERSION}..."
 cd "$DASHBOARD_DIR"
 git pull --ff-only 2>/dev/null || true
 npm install --prefer-offline 2>/dev/null
-npm run build
+NEXT_PUBLIC_EDITION=starter npm run build
 
 # --- Verify standalone output ---
 STANDALONE_DIR="${DASHBOARD_DIR}/.next/standalone"
