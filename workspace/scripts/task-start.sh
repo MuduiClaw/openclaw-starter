@@ -25,7 +25,10 @@ fi
 
 SLUG=$(basename "$SPEC_FILE" .md)
 SPEC_DIR=$(dirname "$SPEC_FILE")
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+# Derive repo root from the SPEC FILE location, not cwd — prevents lock files
+# ending up in the wrong project when running from a different directory.
+SPEC_ABS=$(cd "$(dirname "$SPEC_FILE")" && pwd)/$(basename "$SPEC_FILE")
+REPO_ROOT=$(cd "$(dirname "$SPEC_ABS")" && git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$SPEC_ABS")")
 LOCK_DIR="$REPO_ROOT/.task-lock"
 STARTED_MARKER="$LOCK_DIR/${SLUG}.started"
 
@@ -58,7 +61,7 @@ fi
 # ─── Gate 2: Status must be approved (exact word boundary, not "unapproved") ───
 if ! grep -qiE '\*\*Status\*\*:.*\bapproved\b' "$SPEC_FILE"; then
   echo "⛔ TASK START BLOCKED — status not approved in $SPEC_FILE"
-  echo "  Send to 用户 first. After approval, update status to approved."
+  echo "  Send to Mudui first. After approval, update status to approved."
   exit 1
 fi
 
@@ -96,7 +99,7 @@ fi
 [[ -z "$spec_risk" ]] && spec_risk="feature"
 
 # Default project
-[[ -z "$spec_project" ]] && spec_project="$(pwd)"
+[[ -z "$spec_project" ]] && spec_project="$REPO_ROOT"
 
 # Generate meta.json via python for proper JSON
 python3 - "$SLUG" "$SPEC_FILE" "$spec_type" "$spec_surface" "$spec_risk" "$spec_project" "$META_FILE" <<'PYEOF'

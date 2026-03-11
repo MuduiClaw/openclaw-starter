@@ -20,7 +20,8 @@ fi
 
 SLUG=$(basename "$SPEC_FILE" .md)
 SPEC_DIR=$(dirname "$SPEC_FILE")
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+SPEC_ABS=$(cd "$(dirname "$SPEC_FILE")" && pwd)/$(basename "$SPEC_FILE")
+REPO_ROOT=$(cd "$(dirname "$SPEC_ABS")" && git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$SPEC_ABS")")
 LOCK_DIR="$REPO_ROOT/.task-lock"
 STARTED_MARKER="$LOCK_DIR/${SLUG}.started"
 SELFTEST_MARKER="$LOCK_DIR/${SLUG}.selftest"
@@ -135,7 +136,7 @@ echo "Receipt: $RECEIPT_HASH"
 echo "Time: $TIMESTAMP"
 echo ""
 echo "---"
-echo "Include this receipt hash in your delivery message to 用户:"
+echo "Include this receipt hash in your delivery message to Mudui:"
 echo "📦 Receipt: $RECEIPT_HASH"
 echo ""
-echo "用户 can verify: cat $RECEIPT_FILE"
+echo "Mudui can verify: cat $RECEIPT_FILE"

@@ -18,7 +18,8 @@ if [[ -z "$SPEC_FILE" || ! -f "$SPEC_FILE" ]]; then
 fi
 
 SLUG=$(basename "$SPEC_FILE" .md)
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+SPEC_ABS=$(cd "$(dirname "$SPEC_FILE")" && pwd)/$(basename "$SPEC_FILE")
+REPO_ROOT=$(cd "$(dirname "$SPEC_ABS")" && git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$SPEC_ABS")")
 LOCK_DIR="$REPO_ROOT/.task-lock"
 STARTED_MARKER="$LOCK_DIR/${SLUG}.started"
 
