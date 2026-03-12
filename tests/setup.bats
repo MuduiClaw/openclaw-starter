@@ -35,3 +35,14 @@ setup() {
   ! grep -q 'eval.*\$/opt/homebrew/bin/brew shellenv' setup.sh
   grep -q 'eval.*BREW_PREFIX.*brew shellenv' setup.sh
 }
+
+@test "minimax config includes VL-01 vision model" {
+  # setup.sh must define MiniMax-VL-01 with image input for image understanding
+  grep -q 'MiniMax-VL-01' setup.sh
+  grep -q '"input": \["text", "image"\]' setup.sh
+}
+
+@test "minimax config sets imageModel to VL-01" {
+  # When MiniMax key is provided, imageModel should point to VL-01
+  grep -q 'imageModel.*minimax/MiniMax-VL-01' setup.sh
+}

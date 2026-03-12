@@ -1052,6 +1052,9 @@ if E("_OC_MINIMAX_KEY"):
         "apiKey": "${MINIMAX_API_KEY}",
         "api": "anthropic-messages",
         "models": [
+            {"id": "MiniMax-VL-01", "name": "MiniMax VL 01", "reasoning": False, "input": ["text", "image"],
+             "cost": {"input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.12},
+             "contextWindow": 200000, "maxTokens": 8192},
             {"id": "MiniMax-M2.5", "name": "MiniMax M2.5", "reasoning": True, "input": ["text"],
              "cost": {"input": 0.3, "output": 1.2, "cacheRead": 0.03, "cacheWrite": 0.12},
              "contextWindow": 200000, "maxTokens": 8192},
@@ -1081,10 +1084,15 @@ elif ch == "feishu" and E("_OC_FEISHU_APP_ID"):
     }
 
 state = E("_OC_STATE_DIR")
+# imageModel: use VL-01 for image understanding when MiniMax is available
+agent_defaults = {"model": model_block}
+if E("_OC_MINIMAX_KEY"):
+    agent_defaults["imageModel"] = {"primary": "minimax/MiniMax-VL-01"}
+
 config = {
     "env": {"vars": env_vars},
     "gateway": {"port": 3456, "mode": "local", "auth": {"mode": "token", "token": E("_OC_GW_TOKEN")}},
-    "agents": {"defaults": {"model": model_block}},
+    "agents": {"defaults": agent_defaults},
     "models": {"mode": "merge", "providers": providers},
     "memory": {
         "backend": "qmd", "citations": "auto",
