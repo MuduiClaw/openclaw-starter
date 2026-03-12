@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.openclaw.mcp-bridge</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/apollos/clawd/mcp-bridge/.venv/bin/python</string>
+        <string>/Users/apollos/clawd/mcp-bridge/server.py</string>
+        <string>--sse</string>
+        <string>--port</string>
+        <string>9100</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>/Users/apollos/clawd/mcp-bridge</string>
+    <key>StandardOutPath</key>
+    <string>/Users/apollos/.openclaw/logs/mcp-bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/apollos/.openclaw/logs/mcp-bridge.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/apollos/.local/bin:/Users/apollos/.npm-global/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/apollos</string>
+        <key>OPENCLAW_WORKSPACE</key>
+        <string>/Users/apollos/clawd</string>
+    </dict>
+</dict>
+</plist>
