@@ -397,8 +397,8 @@ if ! command -v node &>/dev/null; then
   success "Node.js $(node --version)"
 else
   NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
-  if [[ "$NODE_VERSION" -lt 24 ]]; then
-    warn "Node.js v${NODE_VERSION} detected, v25+ recommended (native addon compatibility)"
+  if [[ "$NODE_VERSION" -lt 25 ]]; then
+    warn "Node.js v${NODE_VERSION} detected, v25+ required (native addon compatibility)"
     info "Installing latest Node.js..."
     brew install node
     # Prefer latest over old version
