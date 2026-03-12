@@ -620,23 +620,53 @@ else
 fi
 
 # --- Enable macOS SSH (Remote Login) ---
-if ! sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
+# macOS Ventura+ 锁死了命令行开 SSH 的方式（需要 Full Disk Access），
+# 这里尝试所有已知方法，都失败则引导用户手动在 UI 开启。
+SSH_ENABLED=false
+if sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
+  SSH_ENABLED=true
+fi
+
+if ! $SSH_ENABLED; then
   info "Enabling macOS Remote Login (SSH)..."
-  # Try systemsetup first (needs Full Disk Access on Ventura+)
-  if ! sudo systemsetup -setremotelogin on 2>/dev/null; then
-    # Fallback: launchctl load — works without FDA
-    info "systemsetup 需要 Full Disk Access，使用 launchctl 替代..."
-    sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
-    if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no localhost "exit 0" 2>/dev/null; then
-      progress_done "SSH (Remote Login via launchctl)"
+  # Attempt 1: systemsetup (需要 Terminal 有 Full Disk Access)
+  if sudo systemsetup -setremotelogin on 2>/dev/null; then
+    SSH_ENABLED=true
+  fi
+fi
+
+if ! $SSH_ENABLED; then
+  # Attempt 2: launchctl load (部分 macOS 版本可用)
+  sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
+  sleep 1
+  if sudo launchctl list 2>/dev/null | grep -q "com.openssh.sshd"; then
+    SSH_ENABLED=true
+  fi
+fi
+
+if $SSH_ENABLED; then
+  progress_done "SSH (Remote Login)"
+else
+  # 所有自动方式都失败，需要手动
+  echo ""
+  warn "⚠️  macOS 限制：无法自动开启 SSH"
+  printf "   ${BOLD}请手动开启:${NC}\n"
+  printf "   1. 打开 ${CYAN}系统设置${NC}\n"
+  printf "   2. ${CYAN}通用${NC} → ${CYAN}共享${NC}\n"
+  printf "   3. 打开 ${CYAN}远程登录${NC} (Remote Login)\n"
+  echo ""
+  info "等待你手动开启 SSH..."
+  info "开启后按回车继续（或输入 skip 跳过）"
+  read -r SSH_REPLY </dev/tty 2>/dev/null || SSH_REPLY="skip"
+  if [[ "$SSH_REPLY" != "skip" ]]; then
+    if sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
+      progress_done "SSH (Remote Login — 手动开启)"
     else
-      warn "SSH 开启失败 — 请手动: 系统设置 → 通用 → 共享 → 远程登录"
+      warn "SSH 仍未检测到开启，后续可能无法远程访问"
     fi
   else
-    progress_done "SSH (Remote Login)"
+    warn "SSH 已跳过 — 远程访问需要后续手动开启"
   fi
-else
-  progress_done "SSH (Remote Login)"
 fi
 
 # --- Persist PATH in shell profile (so new terminals find node/openclaw/bun) ---
