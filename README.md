@@ -31,18 +31,20 @@ cd openclaw-starter
 | 能力 | 说明 |
 |------|------|
 | **The Loop 方法论** | 实战检验的 Agent 工作循环：想清楚 → 执行 → 验证 → 交付 → 复盘 |
-| **Cron Fleet（13 任务）** | 每日晨报、自动复盘、Fleet 健康监控、博客追踪、记忆归档等 |
-| **24 个 Skills** | 设计、开发、研究、文档、测试、视频——模块化的 AI 能力 |
+| **Cron Fleet（7 任务）** | 每日晨报、自动复盘、Fleet 健康监控、记忆归档等 |
+| **23 个 Skills** | 设计、开发、研究、文档、测试、视频——模块化的 AI 能力 |
 | **Coding Agents** | Codex + Claude Code + Gemini CLI 作为 AI 的执行团队 |
+| **语音消息** | whisper.cpp 本地语音转文字，无需 API Key |
 | **记忆系统（qmd）** | 语义搜索，让 AI 记住上下文和决策 |
 | **infra-dashboard** | `localhost:3001` 实时监控面板（服务状态 / 工具 / LaunchAgent / Cron） |
 | **MCP Bridge** | context7 + deepwiki，实时文档查询 |
-| **Guardian Agent** | 3 层智能守护：进程检查 → 自动修复 → 回滚 → 通知 |
-| **25 个自动化脚本** | 升级、备份、日志轮转、Fleet 检查、健康巡检等 |
+| **Guardian Agent** | 3 层守护：进程检查 → 自动修复 → 自动重启（无需人工审批） |
+| **27 个自动化脚本** | 升级、备份、日志轮转、Fleet 检查、健康巡检、Git 质量门禁等 |
 
 ## 系统要求
 
 - **macOS** Ventura (13.0) 或更高（Apple Silicon / Intel 均可）
+- **Node.js v25+**（安装脚本自动安装，无需手动准备）
 - **8GB+** RAM
 - **5GB+** 可用磁盘空间
 - **聊天频道**：Discord 或飞书（至少配一个）
@@ -192,6 +194,30 @@ openclaw channels add
 
 ---
 
+### Web 搜索（可选）
+
+安装脚本会询问是否配置 [Brave Search API](https://brave.com/search/api/)，让 AI 能搜索互联网。
+
+1. 去 [Brave Search API](https://brave.com/search/api/) 注册（免费额度足够个人使用）
+2. 创建 API Key
+3. 安装时粘贴（或回车跳过，稍后在配置里补）
+
+> 不配也能用，AI 只是没法主动搜网页。
+
+---
+
+### 语音消息（自动）
+
+安装脚本会自动安装 [whisper.cpp](https://github.com/ggerganov/whisper.cpp)，支持在 Discord / 飞书中发送语音消息给 AI。
+
+- 本地运行，不调用外部 API
+- 自动下载 tiny 模型（74MB）
+- Apple Silicon / Intel 均支持
+
+> 安装后无需额外配置，发语音就能识别。
+
+---
+
 ## 安装过程
 
 ```
@@ -208,7 +234,7 @@ openclaw channels add
 [1/3] 依赖安装
      Xcode CLT ✓  Homebrew ✓  Node.js v25 ✓  Bun ✓  uv ✓
      OpenClaw ✓  Codex ✓  Claude Code ✓  Gemini CLI ✓
-     qmd ✓  mcporter ✓  clawhub ✓  oracle ✓
+     qmd ✓  mcporter ✓  clawhub ✓  oracle ✓  whisper.cpp ✓
 
 [2/3] 配置
      LLM 模型 — 选择默认提供商:
@@ -221,6 +247,8 @@ openclaw channels add
        1. Discord
        2. 飞书 (Feishu)
      > _
+
+     Brave Search API Key（可选，回车跳过）: _
 
 [3/3] 启动
      Gateway ✓  Dashboard ✓  MCP Bridge ✓  Guardian ✓
@@ -430,11 +458,11 @@ tailscale set --ssh           # 开启 Tailscale SSH
 ```
 你 ←→ Discord/飞书 ←→ OpenClaw Gateway (:3456)
                           ├── Agent (LLM + Skills + Memory)
-                          ├── Cron Fleet (13 定时任务)
+                          ├── Cron Fleet (7 定时任务)
                           └── MCP Bridge (:9100)
 
 监控面板 → infra-dashboard (:3001)
-守护进程 → Guardian Agent (3 层自动恢复)
+守护进程 → Guardian Agent (自动恢复 + 自动重启)
 后台服务 → 8 个 LaunchAgent (备份/日志/清理/防休眠...)
 ```
 
@@ -448,9 +476,9 @@ openclaw-starter/
 ├── workspace/               # → 安装到 ~/clawd
 │   ├── AGENTS.md            # The Loop 方法论
 │   ├── *.md.example         # 个性化文件模板
-│   ├── skills/              # 24 个 skills
-│   ├── scripts/             # 25 个自动化脚本
-│   ├── prompts/             # 13 个 cron 模板
+│   ├── skills/              # 23 个 skills
+│   ├── scripts/             # 27 个自动化脚本
+│   ├── prompts/             # 7 个 cron 模板
 │   ├── eval/                # 质量评估框架
 │   └── mcp-bridge/          # MCP 服务
 ├── config/                  # 配置模板
