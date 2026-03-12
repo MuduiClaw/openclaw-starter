@@ -586,7 +586,23 @@ if ! $NO_TAILSCALE; then
         info "下一步将打开浏览器进行 Tailscale 授权"
         info "完成浏览器中的登录后，返回此窗口继续..."
         echo ""
-        tailscale login 2>/dev/null || warn "Tailscale login failed — run 'tailscale login' later"
+        # Capture login URL and auto-open in browser (CLI version doesn't auto-open)
+        TS_LOGIN_OUT=$(tailscale login 2>&1) || true
+        TS_LOGIN_URL=$(echo "$TS_LOGIN_OUT" | grep -oE 'https://login\.tailscale\.com/[^ ]+' | head -1)
+        if [[ -n "$TS_LOGIN_URL" ]]; then
+          info "正在打开授权页面..."
+          open "$TS_LOGIN_URL" 2>/dev/null || info "请手动打开: $TS_LOGIN_URL"
+          info "等待授权完成..."
+          # Wait up to 120s for login to complete
+          for _ts_wait in $(seq 1 120); do
+            if perl -e 'alarm 3; exec @ARGV' tailscale status &>/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+        elif echo "$TS_LOGIN_OUT" | grep -qi "already"; then
+          : # already logged in
+        else
+          warn "Tailscale login failed — run 'tailscale login' later"
+        fi
       fi
       # Enable Tailscale SSH
       tailscale set --ssh 2>/dev/null || true
