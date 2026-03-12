@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # PREPARE-COMMIT-MSG: Global pre-commit gate (shared across all projects)
-# All projects set core.hooksPath → ~/clawd/.githooks/
+# Install: git config [--global] core.hooksPath <workspace>/.githooks/
 # Project-specific gates: .githooks/project-gates.sh (sourced after global gates)
 set -euo pipefail
 
 COMMIT_MSG_FILE="$1"
 COMMIT_SOURCE="${2:-}"
+
+# ─── Portable path discovery ───
+# Hooks live in <workspace>/.githooks/ — derive workspace root from hook location
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORKSPACE_ROOT="$(dirname "$HOOKS_DIR")"
+
+# Telemetry helper (fire and forget, never block on telemetry failures)
+TELEMETRY="${WORKSPACE_ROOT}/scripts/gate-telemetry.sh"
+_tel() { [[ -x "$TELEMETRY" ]] && "$TELEMETRY" "$@" 2>/dev/null || true; }
 
 # Skip for merge/squash
 case "$COMMIT_SOURCE" in
@@ -19,13 +28,15 @@ if [[ -f "$repo_root/SOUL.md" || -f "$repo_root/HEARTBEAT.md" ]]; then
   WORKSPACE_MODE=1
 fi
 
-# Already has trailer
-if grep -q '^Pre-commit-gate: passed' "$COMMIT_MSG_FILE" 2>/dev/null; then
-  exit 0
+# Already has tree-hash trailer (v2) — skip re-processing
+# Exception: amend (COMMIT_SOURCE=commit) needs re-generation since tree may have changed
+if grep -q '^Pre-commit-gate: ' "$COMMIT_MSG_FILE" 2>/dev/null; then
+  if [[ "$COMMIT_SOURCE" != "commit" ]]; then
+    exit 0
+  fi
+  # Amend: strip old trailer, will regenerate at the end
+  sed -i '' '/^Pre-commit-gate: /d' "$COMMIT_MSG_FILE"
 fi
-
-# Detect repo root early (needed by project gates and syntax checks)
-repo_root="$(git rev-parse --show-toplevel)"
 
 # Read commit message (first line)
 commit_msg_line=""
@@ -59,12 +70,13 @@ if [[ $prompt_changed -eq 1 && $changelog_changed -eq 0 ]]; then
   echo "⛔ COMMIT BLOCKED — 改了 prompt 但没更新 CHANGELOG"
   echo "  prompts/CHANGELOG.md 未在 staged files 中。"
   echo "  格式: - [YYYY-MM-DD] <job-slug> <version> — <变更摘要>"
+  _tel hook-changelog block
   exit 1
 fi
 
 # ============================================================
 # Gate 0.5: Scope lock — staged files > 5 requires [scope-ack]
-# Prevents blind `git add -A` (defect ② 完成偏好/范围失控)
+# Prevents blind `git add -A` (defect: 完成偏好/范围失控)
 # ============================================================
 if [[ $staged_count -gt 5 ]]; then
   echo ""
@@ -84,40 +96,49 @@ if [[ $staged_count -gt 5 ]]; then
         echo "⛔ COMMIT BLOCKED — $staged_count files staged but no [scope-ack] in commit message"
         echo "  Review the list above. If all files are intentional, add [scope-ack] to your commit message."
         echo "  Example: feat: add feature X [scope-ack]"
-        echo ""
-        echo "  This gate prevents blind 'git add -A'. See SOUL.md §0 defect ②."
+        _tel hook-scope-lock block
         exit 1
       else
         echo "  ✅ [scope-ack] found, proceeding"
+        _tel hook-scope-lock pass
       fi
       ;;
   esac
 fi
 
 # ============================================================
-# Gate 0.7: Spec gate — feature/refactor commits need approved spec
+# Gate 0.7: Spec gate — feature/refactor/fix commits need approved spec
 # Activates for ANY project that has a tasks/ directory
 # ============================================================
 impl_file_count=0
 for f in ${all_staged[@]+"${all_staged[@]}"}; do
+  # Skip non-implementation files
   case "$f" in
-    # Implementation files that require a spec
-    scripts/*.sh|scripts/*.ts|scripts/*.py) impl_file_count=$((impl_file_count + 1)) ;;
+    node_modules/*|*/node_modules/*) continue ;;
+    __tests__/*|*/__tests__/*) continue ;;
+    *.test.*|*.spec.*) continue ;;
+    *.d.ts) continue ;;
+    *.config.*) continue ;;
+  esac
+  # Count implementation files (broad matching)
+  case "$f" in
+    *.ts|*.tsx|*.js|*.jsx|*.py|*.sh|*.go|*.rs) impl_file_count=$((impl_file_count + 1)) ;;
   esac
 done
 
-# Only enforce for projects with tasks/ dir + feat/refactor commits touching >=3 implementation files
-if [[ $impl_file_count -ge 3 && -d "$repo_root/tasks" ]]; then
+# Enforce for projects with tasks/ dir + feat/refactor/fix commits touching >=2 implementation files
+if [[ $impl_file_count -ge 2 && -d "$repo_root/tasks" ]]; then
   case "$commit_msg_line" in
-    feat:*|feat\(*|refactor:*|refactor\(*)
+    feat:*|feat\(*|refactor:*|refactor\(*|fix:*|fix\(*)
       # Check for [spec:filename] reference
       spec_ref=$(echo "$commit_msg_line" | sed -n 's/.*\[spec:\([^]]*\)\].*/\1/p')
       if [[ -z "$spec_ref" ]]; then
         echo ""
-        echo "⛔ COMMIT BLOCKED — feat/refactor with $impl_file_count impl files but no spec reference"
+        echo "⛔ COMMIT BLOCKED — feat/refactor/fix with $impl_file_count impl files but no spec reference"
         echo "  Add [spec:filename] to commit message (filename in tasks/ without .md)"
         echo "  Example: feat: add gates dashboard [spec:gates-dashboard]"
         echo "  Spec must exist at tasks/<filename>.md with Status: approved"
+        _tel hook-spec block
         exit 1
       fi
       # Verify spec file exists
@@ -133,39 +154,39 @@ if [[ $impl_file_count -ge 3 && -d "$repo_root/tasks" ]]; then
         echo ""
         echo "⛔ COMMIT BLOCKED — spec not approved: $spec_file"
         echo "  Status must be 'approved', 'in_progress', or 'done'"
-        echo "  Send spec to Mudui for review first"
         exit 1
       fi
-      # Verify task-start was called
-      if [[ ! -f "$repo_root/.task-lock/${spec_ref}.started" ]]; then
+      # Verify task-start was called (skip if task-lock dir doesn't exist — optional workflow)
+      if [[ -d "$repo_root/.task-lock" && ! -f "$repo_root/.task-lock/${spec_ref}.started" ]]; then
         echo ""
         echo "⛔ COMMIT BLOCKED — task-start.sh was never called for $spec_ref"
         echo "  Run: bash scripts/task-start.sh $spec_file"
         exit 1
       fi
-      # Verify self-test was completed
-      if [[ ! -f "$repo_root/.task-lock/${spec_ref}.selftest" ]]; then
+      # Verify self-test was completed (skip if task-lock dir doesn't exist)
+      if [[ -d "$repo_root/.task-lock" && ! -f "$repo_root/.task-lock/${spec_ref}.selftest" ]]; then
         echo ""
         echo "⛔ COMMIT BLOCKED — self-test not completed for $spec_ref"
         echo "  Run: bash scripts/task-selftest.sh $spec_file <evidence_files...>"
         exit 1
       fi
-      # Verify Oracle spec-verify was run
-      if ! grep -qi "Spec Verification" "$spec_file"; then
+      # Verify Oracle spec-verify was run (skip if task-lock dir doesn't exist)
+      if [[ -d "$repo_root/.task-lock" ]] && ! grep -qi "Spec Verification" "$spec_file"; then
         echo ""
         echo "⛔ COMMIT BLOCKED — spec-verify.sh was never run for $spec_ref"
         echo "  Run: bash scripts/spec-verify.sh $spec_file <deliverable_files...>"
         exit 1
       fi
-      # Verify both Oracle verdicts passed (review + verify)
+      # Verify both Oracle verdicts passed (review + verify; skip if no task-lock)
       verdict_count=$(grep -ci "VERDICT:.*PASS" "$spec_file" || true)
-      if [[ "$verdict_count" -lt 2 ]]; then
+      if [[ -d "$repo_root/.task-lock" && "$verdict_count" -lt 2 ]]; then
         echo ""
         echo "⛔ COMMIT BLOCKED — need Oracle Review PASS + Spec Verify PASS ($verdict_count/2 found)"
         echo "  Fix issues and re-run the failing gate"
         exit 1
       fi
       echo "  ✅ Spec gate: $spec_file (full pipeline verified)"
+      _tel hook-spec pass
       ;;
   esac
 fi
@@ -185,7 +206,7 @@ for f in ${all_staged[@]+"${all_staged[@]}"}; do
 done
 
 # ============================================================
-# Gate: REVIEWED=1 for code/config changes (non-clawd projects)
+# Gate: REVIEWED=1 for code/config changes (non-workspace projects)
 # ============================================================
 code_changed=0
 for f in ${all_staged[@]+"${all_staged[@]}"}; do
@@ -194,11 +215,9 @@ for f in ${all_staged[@]+"${all_staged[@]}"}; do
   esac
 done
 
-# Resolve workspace root
-CLAWD_ROOT="$HOME/clawd"
 if [[ $code_changed -eq 1 && "${REVIEWED:-}" != "1" ]]; then
-  # Clawd workspace uses its own gates (spec system), skip REVIEWED check
-  if [[ "$repo_root" != "$CLAWD_ROOT" ]]; then
+  # Workspace repos use their own gates (spec system), skip REVIEWED check
+  if [[ $WORKSPACE_MODE -eq 0 ]]; then
     # Auto-generated commits (backup/journal) bypass REVIEWED gate
     case "$commit_msg_line" in
       backup:*|journal:*)
@@ -228,9 +247,10 @@ if [[ -f "$project_gates" ]]; then
   source "$project_gates"
 fi
 
-# No checkable files → stamp (pure docs/markdown changes)
+# No checkable files → stamp with tree-hash (pure docs/markdown changes)
 if [[ $needs_check -eq 0 ]]; then
-  printf '\nPre-commit-gate: passed\n' >> "$COMMIT_MSG_FILE"
+  tree_hash=$(git write-tree)
+  printf '\nPre-commit-gate: %s\n' "$tree_hash" >> "$COMMIT_MSG_FILE"
   exit 0
 fi
 
@@ -274,25 +294,6 @@ if [[ ${#staged_yml[@]} -gt 0 ]]; then
   done
 fi
 
-# Gate 4: Prompt CHANGELOG — prompt files changed → CHANGELOG must be staged too
-prompt_changed=0
-changelog_changed=0
-while IFS= read -r f; do
-  [[ -z "$f" ]] && continue
-  case "$f" in
-    prompts/cron/*.prompt.md|prompts/*.prompt.md) prompt_changed=1 ;;
-    prompts/CHANGELOG.md) changelog_changed=1 ;;
-  esac
-done < <(git diff --cached --name-only --diff-filter=ACMRD)
-
-if [[ $prompt_changed -eq 1 && $changelog_changed -eq 0 ]]; then
-  echo ""
-  echo "⛔ COMMIT BLOCKED — 改了 prompt 但没更新 CHANGELOG"
-  echo "  prompts/CHANGELOG.md 未在 staged files 中。"
-  echo "  格式: - [YYYY-MM-DD] <job-slug> <version> — <变更摘要>"
-  failed=1
-fi
-
 if [[ $failed -eq 1 ]]; then
   echo ""
   echo "⛔ PRE-COMMIT GATE FAILED"
@@ -300,7 +301,8 @@ if [[ $failed -eq 1 ]]; then
   exit 1
 fi
 
-# All passed
-printf '\nPre-commit-gate: passed\n' >> "$COMMIT_MSG_FILE"
-echo "✅ Pre-commit gate: passed"
+# All passed — stamp with tree-hash (v2 anti-forgery)
+tree_hash=$(git write-tree)
+printf '\nPre-commit-gate: %s\n' "$tree_hash" >> "$COMMIT_MSG_FILE"
+echo "✅ Pre-commit gate: passed (tree: ${tree_hash:0:8})"
 exit 0

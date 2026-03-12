@@ -6,6 +6,14 @@ set -euo pipefail
 
 echo "🔍 Pre-push gate..."
 
+# ─── Portable path discovery ───
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORKSPACE_ROOT="$(dirname "$HOOKS_DIR")"
+
+# Telemetry helper — same as prepare-commit-msg
+TELEMETRY="${WORKSPACE_ROOT}/scripts/gate-telemetry.sh"
+_tel() { [[ -x "$TELEMETRY" ]] && "$TELEMETRY" "$@" 2>/dev/null || true; }
+
 # Workspace repos (docs/scripts/config) get relaxed checks: warn only, don't block.
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 WORKSPACE_MODE=0
@@ -20,7 +28,6 @@ failed=0
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [[ "$local_sha" == "$z40" ]]; then
-    # Deleting ref, skip
     continue
   fi
 
@@ -32,37 +39,26 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   range="$remote_sha..$local_sha"
 
-  # Get files changed in this push
-  changed_files=()
-  while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    changed_files+=("$f")
-  done < <(git diff --name-only "$range" 2>/dev/null || true)
-
   # Gate 1: Conventional commit format (fast regex check)
-  # Workspace repos: warn only, don't block
   while IFS= read -r msg; do
-    # Skip merge commits
     [[ "$msg" == Merge* ]] && continue
-    # Check format: type[(scope)]: description
     if ! echo "$msg" | grep -qE '^(feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert|init|wip|i18n|backup|journal|spec)(\([^)]+\))?(!)?:'; then
       if [[ $WORKSPACE_MODE -eq 1 ]]; then
         echo "  ⚠️  Loose commit format (workspace): $msg"
       else
         echo "  ❌ Bad commit format: $msg"
         echo "     Expected: type[(scope)]: description"
+        _tel ci-commit-format block
         failed=1
       fi
     fi
   done < <(git log --format='%s' "$range" 2>/dev/null || true)
 
   # Gate 2: Cumulative impl file check (anti-salami-slicing)
-  # Skip for workspace repos — mostly scripts/config, not product code
   if [[ $WORKSPACE_MODE -eq 0 ]]; then
   impl_count=$(git log --no-merges --format="" --name-only --invert-grep -E --grep="^(backup|journal):" "$range" 2>/dev/null | grep -E '\.(sh|ts|tsx|js|jsx|py|go|rs)$' | sort -u | wc -l || true)
-  impl_count=$(echo "$impl_count" | tr -d ' ')  # trim whitespace from wc
+  impl_count=$(echo "$impl_count" | tr -d ' ')
 
-  repo_root="$(git rev-parse --show-toplevel)"
   if [[ "$impl_count" -ge 8 && -d "$repo_root/tasks" ]]; then
     has_spec=0
     if git log --format='%B' "$range" 2>/dev/null | grep -qE '\[spec:[^]]*\]'; then
@@ -71,39 +67,48 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     if [[ $has_spec -eq 0 ]]; then
       echo "  ⛔ [Gate 2] 累积 ${impl_count} 个 impl 文件但无 spec 引用"
       echo "     在任一 commit message 中加 [spec:slug] 引用 tasks/slug.md"
-      echo "     Spec 是前置规划，不是事后文档——先写 spec 再动手"
+      _tel hook-pre-push block
       failed=1
     fi
   fi
-  fi  # end WORKSPACE_MODE gate 2 skip
+  fi
 
   # Gate 3: Pre-commit trailer check (catch hook bypasses)
-  # Skip for workspace repos — cron/subagent commits don't go through pre-commit
+  # v2: verifies tree-hash anti-forgery
   if [[ $WORKSPACE_MODE -eq 0 ]]; then
   while IFS= read -r sha; do
     msg=$(git log -1 --format='%B' "$sha")
-    # Skip merge commits and backup/journal
     first_line=$(echo "$msg" | head -1)
     case "$first_line" in
       Merge*|backup:*|journal:*) continue ;;
     esac
-    if ! echo "$msg" | grep -q 'Pre-commit-gate: passed'; then
-      echo "  ❌ Commit $sha missing Pre-commit-gate trailer (hooks bypassed?)"
+    trailer_val=$(echo "$msg" | sed -n 's/^Pre-commit-gate: //p' | tail -1)
+    if [[ -z "$trailer_val" ]]; then
+      echo "  ❌ Commit ${sha:0:8} missing Pre-commit-gate trailer (hooks bypassed?)"
+      _tel hook-tree-hash block
       failed=1
+    elif [[ "$trailer_val" == "passed" ]]; then
+      echo "  ❌ Commit ${sha:0:8} has legacy 'passed' trailer (v2 requires tree-hash)"
+      echo "     Amend the commit to regenerate: git commit --amend --no-edit"
+      _tel hook-tree-hash block
+      failed=1
+    else
+      actual_tree=$(git rev-parse "${sha}^{tree}" 2>/dev/null || true)
+      if [[ "$trailer_val" != "$actual_tree" ]]; then
+        echo "  ❌ Commit ${sha:0:8} tree-hash mismatch (trailer: ${trailer_val:0:8}… actual: ${actual_tree:0:8}…)"
+        _tel hook-tree-hash block
+        failed=1
+      fi
     fi
   done < <(git rev-list "$range" 2>/dev/null || true)
-  fi  # end WORKSPACE_MODE gate 3 skip
+  fi
 
-  # Gate 4: Cumulative TDD enforcement — push must include tests if it includes code
-  # Checks the ENTIRE push range (not per-commit). Code in commit A + tests in commit B = OK.
-  # Skips repos without a test framework (warn only).
+  # Gate 4: Cumulative TDD enforcement
   g4_has_code=0
   g4_has_tests=0
   g4_code_list=""
 
-  # Detect test framework in repo
   g4_has_framework=0
-  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
   if [[ -f "$repo_root/vitest.config.ts" || -f "$repo_root/vitest.config.mts" || -f "$repo_root/vitest.config.js" ]]; then
     g4_has_framework=1
   elif grep -q '"jest"' "$repo_root/package.json" 2>/dev/null; then
@@ -120,10 +125,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    # Skip docs, configs, styles, assets, lockfiles
     echo "$f" | grep -qE '\.(md|txt|rst|adoc|mdx|json|ya?ml|toml|ini|env|css|scss|sass|less|svg|png|jpg|gif|ico|woff2?|eot|ttf)$' && continue
     echo "$f" | grep -qE '(package-lock|yarn\.lock|pnpm-lock|Cargo\.lock|poetry\.lock|go\.sum)' && continue
-    # Test file?
     if echo "$f" | grep -qE '(\.|_)(test|spec)\.[^/]+$|^(tests|__tests__|test|spec)/|^test_[^/]+\.[^/]+$|\.bats$'; then
       g4_has_tests=1
     else
@@ -137,8 +140,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       echo "  ❌ [Gate 4 TDD] Push has code changes but no test changes"
       echo -e "     Code files:$g4_code_list"
       echo "     Fix: add tests, or use: bash scripts/git-push-safe.sh"
-      # Write file list for auto-remediation
       echo -e "$g4_code_list" | sed 's/^[[:space:]]*//' | grep -v '^$' > /tmp/.tdd-gate4-files 2>/dev/null || true
+      _tel script-tdd-verify-diff block
       failed=1
     else
       echo "  ⚠️  [Gate 4 TDD] Code changes without tests (no test framework detected — warning only)"
@@ -154,4 +157,5 @@ if [[ $failed -eq 1 ]]; then
 fi
 
 echo "✅ Pre-push gate: passed"
+_tel hook-pre-push pass
 exit 0

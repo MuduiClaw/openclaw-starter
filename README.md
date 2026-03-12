@@ -33,7 +33,7 @@ cd openclaw-starter
 | **The Loop** | 实战检验的 Agent 工作循环：想清楚 → 执行 → 验证 → 交付 → 复盘 |
 | **Coding Agents** | Codex + Claude Code + Gemini CLI 作为 AI 的执行团队 |
 | **23 个 Skills** | 设计、开发、研究、文档、测试、视频——模块化的 AI 能力 |
-| **Git 质量门禁** | 7 层自动化 Gate：commit 格式、scope 检查、spec 审查、TDD 强制、tree-hash 防伪 |
+| **Git 质量门禁** | [21 层自动化 Gate](docs/GATES.md)：commit 格式、scope 检查、spec 审查、TDD 强制、tree-hash 防伪 |
 | **Cron 定时任务** | 内置调度引擎，按需配置自动化任务 |
 | **infra-dashboard** | 实时监控：服务状态、Settings 配置、工具版本、模型用量、Cron、Gate 健康 |
 | **语音消息** | whisper.cpp 本地语音转文字，无需 API Key |
@@ -156,6 +156,7 @@ openclaw-starter/
 | **[FAQ](docs/FAQ.md)** | 常见问题、排错、升级 |
 | **[架构](docs/ARCHITECTURE.md)** | 系统架构详解 |
 | **[Cron Fleet](docs/CRON-FLEET.md)** | 定时任务使用指南 |
+| **[门禁系统](docs/GATES.md)** | 21 层自动化质量门禁：安装、使用、自定义 |
 | **[Skills](docs/SKILLS-GUIDE.md)** | Skills 扩展指南 |
 | **[升级](docs/UPGRADE.md)** | 三层升级：OpenClaw / Dashboard / Starter |
 | **[排错](docs/TROUBLESHOOTING.md)** | 问题诊断与解决 |
