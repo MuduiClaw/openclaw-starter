@@ -48,8 +48,10 @@ bash workspace/scripts/setup-gates.sh --uninstall
 |------|---------|------|
 | **Conventional Commit** | 所有 commit | 要求 `type[(scope)]: description` 格式 |
 | **Anti-salami-slicing** | 累积 ≥8 个实现文件 | 要求 spec 引用，防止大变更拆成小 commit 绕过 spec |
+| **Spec 状态检查** | 有 `[spec:slug]` 引用 | 验证 spec 文件存在且未被 abandoned |
 | **Tree-hash 验证** | 所有 commit | 验证 trailer 的 tree-hash 与实际一致 |
 | **TDD 强制** | 有代码变更且检测到测试框架 | 要求 push 包含测试变更 |
+| **Lint/Typecheck** | tsconfig.json 或 eslint config 存在 | 自动运行 `tsc --noEmit` / `eslint`，30s 超时 |
 
 ### 门禁模式
 

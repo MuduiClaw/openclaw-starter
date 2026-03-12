@@ -33,7 +33,7 @@ cd openclaw-starter
 | **The Loop** | 实战检验的 Agent 工作循环：想清楚 → 执行 → 验证 → 交付 → 复盘 |
 | **Coding Agents** | Codex + Claude Code + Gemini CLI 作为 AI 的执行团队 |
 | **23 个 Skills** | 设计、开发、研究、文档、测试、视频——模块化的 AI 能力 |
-| **Git 质量门禁** | [21 层自动化 Gate](docs/GATES.md)：commit 格式、scope 检查、spec 审查、TDD 强制、tree-hash 防伪 |
+| **Git 质量门禁** | [19 层自动化 Gate](docs/GATES.md)：commit 格式、scope 检查、spec 审查、TDD 强制、typecheck/eslint、tree-hash 防伪 |
 | **Cron 定时任务** | 内置调度引擎，按需配置自动化任务 |
 | **infra-dashboard** | 实时监控：服务状态、Settings 配置、工具版本、模型用量、Cron、Gate 健康 |
 | **语音消息** | whisper.cpp 本地语音转文字，无需 API Key |

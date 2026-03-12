@@ -66,9 +66,26 @@ setup() {
 
 # ─── Task-lock graceful skip ───
 
-@test "task-lock checks are conditional on .task-lock dir existing" {
-  # All task-lock file checks should first test -d .task-lock
-  grep -q '\-d.*task-lock' "$HOOKS_DIR/prepare-commit-msg"
+@test "no task-lock references in prepare-commit-msg (removed in physicalize)" {
+  ! grep -q 'task.lock\|task-start\|task-selftest' "$HOOKS_DIR/prepare-commit-msg"
+}
+
+# ─── Gate 2.1: Spec status check ───
+
+@test "pre-push has Gate 2.1 spec status check" {
+  grep -q 'Gate 2.1' "$HOOKS_DIR/pre-push"
+  grep -q 'abandoned' "$HOOKS_DIR/pre-push"
+}
+
+# ─── Gate 5: Lint/typecheck ───
+
+@test "pre-push has Gate 5 typecheck" {
+  grep -q 'Gate 5' "$HOOKS_DIR/pre-push"
+  grep -q 'typecheck\|tsc' "$HOOKS_DIR/pre-push"
+}
+
+@test "Gate 5 has 30s timeout protection" {
+  grep -q '30' "$HOOKS_DIR/pre-push"
 }
 
 # ─── Setup script ───
