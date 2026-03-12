@@ -46,6 +46,10 @@ STATE_FILE = os.path.join(HOME, ".openclaw", "logs", "guardian_state.json")
 LAUNCHD_LABEL = "ai.openclaw.gateway"
 SAFE_RESTART_SCRIPT = os.path.join(HOME, "clawd", "scripts", "safe-gateway-restart.sh")
 
+# Auto-restart mode: Gateway 挂了直接重启，不走审批
+# 设置 GUARDIAN_REQUIRE_APPROVAL=1 启用审批门禁（高安全环境）
+REQUIRE_APPROVAL = os.environ.get("GUARDIAN_REQUIRE_APPROVAL", "0") == "1"
+
 BAK_FILES = [
     OPENCLAW_JSON + ".bak",
     OPENCLAW_JSON + ".bak.1",
@@ -427,12 +431,36 @@ class HealthChecker:
         return self._is_service_loaded()
 
     def simple_restart(self):
-        """Layer 1 简单重启 — 走统一入口脚本（需 owner 确认）"""
-        log.info("Layer 1: 提交重启请求 (via safe-gateway-restart.sh)")
+        """Layer 1 简单重启 — 默认自动重启，审批模式可选"""
+        log.info("Layer 1: 提交重启请求")
 
         # 关键：先确保服务在 launchd 里，不在就 re-install
         self._ensure_service_installed()
 
+        if not REQUIRE_APPROVAL:
+            # 自动重启模式：直接 kickstart，不走审批
+            log.info("Layer 1: 自动重启模式 — 直接 kickstart Gateway")
+            uid = os.getuid()
+            rc, stdout, stderr = run_cmd(
+                f"launchctl kickstart -k gui/{uid}/{LAUNCHD_LABEL}",
+                timeout=30
+            )
+            if rc == 0:
+                import time
+                time.sleep(5)
+                health = self.check()
+                if health["healthy"]:
+                    log.info("Layer 1: 自动重启成功 ✅")
+                    return True
+                else:
+                    log.warning("Layer 1: kickstart 后仍不健康: %s", health.get("error", ""))
+                    return False
+            else:
+                log.error("Layer 1: kickstart 失败: rc=%d %s", rc, stderr[:200] if stderr else "")
+                return False
+
+        # 审批模式：走 safe-gateway-restart.sh
+        log.info("Layer 1: 审批模式 (via safe-gateway-restart.sh)")
         rc, stdout, stderr = run_cmd(
             f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L1 health check failed'",
             timeout=30
@@ -605,16 +633,32 @@ class RollbackManager:
             return False, "GitHub 远程配置恢复后仍不健康"
 
     def _restart_and_verify(self):
-        """Layer 3 重启请求 — 走统一入口（需 owner 确认）"""
+        """Layer 3 重启 — 默认自动，审批模式可选"""
+        if not REQUIRE_APPROVAL:
+            log.info("Layer 3: 自动重启模式 — 直接 kickstart Gateway")
+            uid = os.getuid()
+            rc, stdout, stderr = run_cmd(
+                f"launchctl kickstart -k gui/{uid}/{LAUNCHD_LABEL}",
+                timeout=30
+            )
+            if rc == 0:
+                import time
+                time.sleep(5)
+                health = self.check()
+                if health["healthy"]:
+                    log.info("Layer 3: 自动重启成功 ✅")
+                    return True
+                log.warning("Layer 3: kickstart 后仍不健康")
+            return False
+
+        # 审批模式
         rc, stdout, stderr = run_cmd(
             f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L3 config rollback verify'",
             timeout=30
         )
-        # rc=3 means request filed (pending approval), rc=0 means already pending
-        # Either way, Guardian can't restart without owner approval
         if rc in (0, 3):
             log.info("Layer 3: 重启请求已提交，等待 owner 确认")
-        return False  # Always false — actual restart happens after human approval
+        return False
 
 
 # ============================================================
@@ -731,12 +775,13 @@ class GuardianAgent:
             self._save()
             return
 
-        # 如果重启请求已提交（等待 owner 确认），不再升级
-        restart_request = os.path.join(OPENCLAW_DIR, "state", "gateway-restart-request.json")
-        if os.path.exists(restart_request):
-            log.info("重启请求已待审批，等待 owner 确认，不升级")
-            self._save()
-            return
+        # 如果审批模式且重启请求已提交，不再升级
+        if REQUIRE_APPROVAL:
+            restart_request = os.path.join(OPENCLAW_DIR, "state", "gateway-restart-request.json")
+            if os.path.exists(restart_request):
+                log.info("重启请求已待审批，等待 owner 确认，不升级")
+                self._save()
+                return
 
         # 连续失败达到阈值，先做一次轻量重启，失败再升级
         log.warning("连续失败 %d 次，开始逐层升级修复", self.consecutive_failures)
@@ -769,17 +814,32 @@ class GuardianAgent:
             if stderr:
                 log.warning("doctor stderr: %s", stderr[:200])
 
-            # doctor 后重启请求 — 走统一入口（需 owner 确认）
+            # doctor 后重启
             self.health._ensure_service_installed()
-            rc_restart, _, _ = run_cmd(
-                f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L1.5 doctor fix verify'",
-                timeout=30
-            )
-            if rc_restart in (0, 3):
-                log.info("Layer 1.5: doctor 完成，重启请求已提交，等待 owner 确认")
-                # 不立即标记为成功——等 owner 确认重启后才算
-                return
-            log.warning("Layer 1.5: doctor --fix 后仍不健康，升级到 Layer 3")
+            if not REQUIRE_APPROVAL:
+                log.info("Layer 1.5: 自动重启模式 — 直接 kickstart Gateway")
+                uid = os.getuid()
+                rc_restart, _, _ = run_cmd(
+                    f"launchctl kickstart -k gui/{uid}/{LAUNCHD_LABEL}",
+                    timeout=30
+                )
+                if rc_restart == 0:
+                    import time
+                    time.sleep(5)
+                    health = self.health.check()
+                    if health["healthy"]:
+                        log.info("Layer 1.5: doctor + 重启成功 ✅")
+                        return
+                log.warning("Layer 1.5: doctor --fix 后仍不健康，升级到 Layer 3")
+            else:
+                rc_restart, _, _ = run_cmd(
+                    f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L1.5 doctor fix verify'",
+                    timeout=30
+                )
+                if rc_restart in (0, 3):
+                    log.info("Layer 1.5: doctor 完成，重启请求已提交，等待 owner 确认")
+                    return
+                log.warning("Layer 1.5: doctor --fix 后仍不健康，升级到 Layer 3")
         elif not GUARDIAN_ALLOW_DOCTOR_FIX:
             log.warning("Guardian 配置保护：Layer 1.5(doctor) 已禁用")
 
