@@ -437,6 +437,21 @@ if [ -f "${SCRIPT_DIR}/workspace/scripts/Brewfile" ]; then
   progress_done "Homebrew packages"
 fi
 
+# --- whisper.cpp model (local speech-to-text, no API key needed) ---
+WHISPER_MODEL="/opt/homebrew/share/whisper-cpp/for-tests-ggml-tiny.bin"
+if command -v whisper-cli &>/dev/null && [ ! -f "$WHISPER_MODEL" ]; then
+  info "Downloading whisper tiny model (74MB)..."
+  mkdir -p "$(dirname "$WHISPER_MODEL")"
+  if curl --connect-timeout 10 --max-time 180 -fsSL -o "$WHISPER_MODEL" \
+    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin" 2>/dev/null; then
+    success "whisper model"
+  else
+    warn "whisper model download failed (voice messages will be skipped)"
+  fi
+elif [ -f "$WHISPER_MODEL" ]; then
+  progress_done "whisper model"
+fi
+
 # --- OpenClaw ---
 if ! command -v openclaw &>/dev/null; then
   info "Installing OpenClaw..."

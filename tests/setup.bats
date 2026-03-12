@@ -119,6 +119,12 @@ assert_script_not_matches() {
   assert_script_contains '"allowedAgents": ["pi", "claude", "codex", "opencode", "gemini"]'
 }
 
+@test "setup.sh installs whisper-cpp and downloads tiny model for local STT" {
+  grep -q 'whisper-cpp' "$REPO_ROOT/workspace/scripts/Brewfile"
+  assert_script_contains 'ggml-tiny.bin'
+  assert_script_contains 'whisper-cli'
+}
+
 @test "setup.sh generates local gateway config and reuses existing gateway tokens" {
   assert_script_contains '# Generate openclaw.json using python3 (safe from shell injection)'
   assert_script_contains 'GATEWAY_TOKEN="${EXISTING_GW_TOKEN:-$(openssl rand -hex 24)}"'
