@@ -553,6 +553,78 @@ else
   progress_done "qmd"
 fi
 
+# --- Optional CLI tools (enhance skills) ---
+# These are not required but unlock additional OpenClaw skills.
+# Each is checked independently; failures are non-critical.
+section "Optional CLI Tools"
+info "These tools are optional but unlock additional skills (email, RSS, X/Twitter, Google Workspace)."
+
+# himalaya — email (IMAP/SMTP)
+if ! command -v himalaya &>/dev/null; then
+  info "Installing himalaya (email CLI)..."
+  brew install himalaya 2>/dev/null || warn "himalaya install failed (non-critical)"
+fi
+if command -v himalaya &>/dev/null; then
+  progress_done "himalaya $(himalaya --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+else
+  warn "himalaya not installed — email skill unavailable"
+fi
+
+# gogcli (gog) — Google Workspace (Gmail, Calendar, Drive, Sheets)
+if ! command -v gog &>/dev/null; then
+  info "Installing gogcli (Google Workspace CLI)..."
+  brew install gogcli 2>/dev/null || warn "gogcli install failed (non-critical)"
+fi
+if command -v gog &>/dev/null; then
+  progress_done "gog $(gog --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+else
+  warn "gog not installed — Google Workspace skill unavailable"
+fi
+
+# bird — X/Twitter CLI
+if ! command -v bird &>/dev/null; then
+  info "Installing bird (X/Twitter CLI)..."
+  npm i -g @steipete/bird 2>/dev/null || warn "bird install failed (non-critical)"
+fi
+if command -v bird &>/dev/null; then
+  progress_done "bird $(bird --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)"
+else
+  warn "bird not installed — X/Twitter skill unavailable"
+fi
+
+# blogwatcher — RSS/blog monitoring (requires Go)
+if ! command -v blogwatcher &>/dev/null; then
+  if command -v go &>/dev/null; then
+    info "Installing blogwatcher (RSS monitor)..."
+    GOPATH="${GOPATH:-$HOME/go}"
+    go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@latest 2>/dev/null || warn "blogwatcher install failed (non-critical)"
+    # Symlink to homebrew bin so LaunchAgent PATH can find it
+    if [[ -f "$GOPATH/bin/blogwatcher" ]] && [[ -d "/opt/homebrew/bin" ]]; then
+      ln -sf "$GOPATH/bin/blogwatcher" /opt/homebrew/bin/blogwatcher 2>/dev/null || true
+    fi
+  else
+    # Go not installed — offer to install
+    info "blogwatcher requires Go. Installing Go..."
+    brew install go 2>/dev/null || warn "Go install failed — blogwatcher skipped"
+    if command -v go &>/dev/null; then
+      GOPATH="${GOPATH:-$HOME/go}"
+      go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@latest 2>/dev/null || warn "blogwatcher install failed (non-critical)"
+      if [[ -f "$GOPATH/bin/blogwatcher" ]] && [[ -d "/opt/homebrew/bin" ]]; then
+        ln -sf "$GOPATH/bin/blogwatcher" /opt/homebrew/bin/blogwatcher 2>/dev/null || true
+      fi
+      # Ensure Go bin PATH in .zprofile for LaunchAgent
+      if ! grep -q 'go/bin' "$HOME/.zprofile" 2>/dev/null; then
+        printf '\n# Go binaries\nexport PATH="$PATH:$HOME/go/bin"\n' >> "$HOME/.zprofile"
+      fi
+    fi
+  fi
+fi
+if command -v blogwatcher &>/dev/null; then
+  progress_done "blogwatcher"
+else
+  warn "blogwatcher not installed — RSS monitoring skill unavailable"
+fi
+
 # --- Tailscale (remote access) ---
 if ! $NO_TAILSCALE; then
   if ! command -v tailscale &>/dev/null; then

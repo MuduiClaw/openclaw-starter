@@ -167,3 +167,20 @@ assert_script_not_matches() {
   assert_script_contains 'http://localhost:3001'
   assert_script_not_contains '0.0.0.0'
 }
+
+@test "setup.sh includes optional CLI tools section with all 4 tools" {
+  assert_script_contains 'Optional CLI Tools'
+  assert_script_contains 'brew install himalaya'
+  assert_script_contains 'brew install gogcli'
+  assert_script_contains '@steipete/bird'
+  assert_script_contains 'blogwatcher/cmd/blogwatcher@latest'
+}
+
+@test "setup.sh symlinks blogwatcher to homebrew bin for LaunchAgent PATH" {
+  assert_script_contains 'ln -sf "$GOPATH/bin/blogwatcher" /opt/homebrew/bin/blogwatcher'
+}
+
+@test "setup.sh adds Go bin to .zprofile for blogwatcher" {
+  assert_script_contains 'go/bin'
+  assert_script_contains '.zprofile'
+}
