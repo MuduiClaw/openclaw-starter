@@ -46,3 +46,29 @@ setup() {
   # When MiniMax key is provided, imageModel should point to VL-01
   grep -q 'imageModel.*minimax/MiniMax-VL-01' setup.sh
 }
+
+@test "setup.sh prompts for Brave Search API Key" {
+  grep -q 'Brave.*API.*Key\|Brave Search' setup.sh
+  grep -q '_OC_BRAVE_API_KEY' setup.sh
+}
+
+@test "setup.sh writes tools.web.search when Brave key provided" {
+  # Python code uses tools["web"] with search and fetch dicts
+  grep -q 'tools\["web"\]' setup.sh
+  grep -q '"search"' setup.sh
+  grep -q '"fetch"' setup.sh
+}
+
+@test "config template includes tools.web.search comments" {
+  grep -q 'Brave API Key\|__YOUR_BRAVE_API_KEY__' config/openclaw.template.json5
+}
+
+@test "config template includes plugins.entries comments" {
+  grep -q 'plugins' config/openclaw.template.json5
+  grep -q 'entries' config/openclaw.template.json5
+}
+
+@test "config template includes session.maintenance comments" {
+  grep -q 'maintenance' config/openclaw.template.json5
+  grep -q 'pruneAfter' config/openclaw.template.json5
+}

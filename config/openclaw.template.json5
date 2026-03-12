@@ -99,6 +99,40 @@
   // === 工具配置 ===
   "tools": {
     "profile": "full"
+
+    // Web 搜索（需要 Brave API Key）
+    // "web": {
+    //   "search": {
+    //     "enabled": true,
+    //     "apiKey": "__YOUR_BRAVE_API_KEY__"
+    //   },
+    //   "fetch": {
+    //     "enabled": true
+    //   }
+    // },
+
+    // 多媒体分析（需要 Google API Key）
+    // "media": {
+    //   "image": { "enabled": true },
+    //   "audio": { "enabled": true },
+    //   "video": { "enabled": true }
+    // },
+
+    // 链接解析
+    // "links": {
+    //   "enabled": true,
+    //   "maxLinks": 5
+    // },
+
+    // 执行安全级别
+    // "exec": {
+    //   "security": "full",
+    //   "ask": "off"
+    // },
+
+    // Session 可见性 / Agent 间通信
+    // "sessions": { "visibility": "all" },
+    // "agentToAgent": { "enabled": true }
   },
 
   // === Skills ===
@@ -112,6 +146,15 @@
     "maxConcurrentRuns": 3
   },
 
+  // === 消息队列 ===
+  // "messages": {
+  //   "queue": {
+  //     "mode": "collect",
+  //     "debounceMs": 1000,
+  //     "cap": 20
+  //   }
+  // },
+
   // === 日志 ===
   "logging": {
     "level": "info",
@@ -122,7 +165,23 @@
   // === Session ===
   "session": {
     "dmScope": "user"
+    // "maintenance": {
+    //   "mode": "enforce",
+    //   "pruneAfter": "30d"
+    // }
   },
+
+  // === 插件 ===
+  // "plugins": {
+  //   "entries": {
+  //     "discord": { "enabled": true },
+  //     "feishu": { "enabled": true },
+  //     "slack": { "enabled": true },
+  //     "telegram": { "enabled": true },
+  //     "whatsapp": { "enabled": true },
+  //     "acpx": { "enabled": true }
+  //   }
+  // },
 
   // === 浏览器 ===
   "browser": {

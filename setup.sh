@@ -855,6 +855,7 @@ FEISHU_APP_ID=""
 FEISHU_APP_SECRET=""
 DISCORD_GUILD=""
 DISCORD_USER=""
+BRAVE_API_KEY=""
 
 if [ -f "$EXISTING_CONFIG" ]; then
   info "Existing configuration found at ${EXISTING_CONFIG}"
@@ -963,6 +964,7 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   DISCORD_USER=""
   FEISHU_APP_ID=""
   FEISHU_APP_SECRET=""
+  BRAVE_API_KEY=""
   printf "${BOLD}     Chat Channel — 选择一个:${NC}\n"
   printf "       ${CYAN}1.${NC} Discord\n"
   printf "       ${CYAN}2.${NC} 飞书 (Feishu)\n"
@@ -999,6 +1001,18 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ;;
   esac
 
+  echo ""
+  info "可选：配置 Brave Search API Key（启用 web_search）"
+  info "获取地址：https://brave.com/search/api/"
+  ask "Brave API Key（可选，回车跳过）: "
+  read -rs BRAVE_API_KEY
+  echo ""
+  if [[ -n "$BRAVE_API_KEY" ]]; then
+    success "Brave Search API Key"
+  else
+    info "跳过 Brave Search（稍后可在 Dashboard 里配置）"
+  fi
+
   # --- Review & Confirm ---
   echo ""
   printf "${BOLD}     配置确认:${NC}\n"
@@ -1015,6 +1029,11 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
     printf "       频道:  飞书 (App: ${FEISHU_APP_ID:-未设置})\n"
   else
     printf "       频道:  ${DIM}未配置（稍后添加）${NC}\n"
+  fi
+  if [[ -n "$BRAVE_API_KEY" ]]; then
+    printf "       搜索:  Brave Search 已配置\n"
+  else
+    printf "       搜索:  ${DIM}未配置（稍后在 Dashboard 添加）${NC}\n"
   fi
   echo ""
   ask "确认以上配置？[Y/n] (n=重新配置) "
@@ -1093,6 +1112,7 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   _OC_FEISHU_APP_ID="${FEISHU_APP_ID:-}" \
   _OC_FEISHU_APP_SECRET="${FEISHU_APP_SECRET:-}" \
   _OC_CHANNEL_TYPE="${CHANNEL_TYPE:-}" \
+  _OC_BRAVE_API_KEY="${BRAVE_API_KEY:-}" \
   _OC_STATE_DIR="$OPENCLAW_STATE" \
   _OC_GW_TOKEN="$GATEWAY_TOKEN" \
   python3 -c '
@@ -1159,6 +1179,18 @@ agent_defaults = {"model": model_block}
 if E("_OC_MINIMAX_KEY"):
     agent_defaults["imageModel"] = {"primary": "minimax/MiniMax-VL-01"}
 
+tools = {"profile": "full"}
+if E("_OC_BRAVE_API_KEY"):
+    tools["web"] = {
+        "search": {
+            "enabled": True,
+            "apiKey": E("_OC_BRAVE_API_KEY"),
+        },
+        "fetch": {
+            "enabled": True,
+        },
+    }
+
 config = {
     "env": {"vars": env_vars},
     "gateway": {"port": 3456, "mode": "local", "auth": {"mode": "token", "token": E("_OC_GW_TOKEN")}},
@@ -1180,7 +1212,7 @@ config = {
         "allowedAgents": ["pi", "claude", "codex", "opencode", "gemini"],
         "maxConcurrentSessions": 4,
     },
-    "tools": {"profile": "full"},
+    "tools": tools,
     "skills": {"load": {"watch": False}, "install": {"nodeManager": "npm"}},
     "cron": {"maxConcurrentRuns": 3},
     "logging": {"level": "info", "file": f"{state}/logs/gateway-audit.log", "consoleLevel": "warn"},
