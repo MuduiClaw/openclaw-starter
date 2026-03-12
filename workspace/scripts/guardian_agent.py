@@ -30,7 +30,22 @@ from urllib.error import URLError, HTTPError
 
 HOME = os.path.expanduser("~")
 
-HEALTH_URL = "http://127.0.0.1:18789/health"
+# Gateway 端口：优先环境变量，其次从配置文件读，最后默认 3456
+def _get_gateway_port():
+    port = os.environ.get("OPENCLAW_GATEWAY_PORT")
+    if port:
+        return int(port)
+    config_path = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+    try:
+        with open(config_path) as f:
+            import json as _json
+            cfg = _json.load(f)
+            return cfg.get("gateway", {}).get("port", 3456)
+    except Exception:
+        return 3456
+
+GATEWAY_PORT = _get_gateway_port()
+HEALTH_URL = f"http://127.0.0.1:{GATEWAY_PORT}/health"
 HEALTH_TIMEOUT = 5
 HEALTH_RETRIES = 3
 HEALTH_RETRY_DELAY = 1.0
@@ -49,6 +64,27 @@ SAFE_RESTART_SCRIPT = os.path.join(HOME, "clawd", "scripts", "safe-gateway-resta
 # Auto-restart mode: Gateway 挂了直接重启，不走审批
 # 设置 GUARDIAN_REQUIRE_APPROVAL=1 启用审批门禁（高安全环境）
 REQUIRE_APPROVAL = os.environ.get("GUARDIAN_REQUIRE_APPROVAL", "0") == "1"
+
+
+def _wait_for_healthy(check_fn, max_wait=90, interval=10):
+    """轮询等待 Gateway 健康，最多 max_wait 秒"""
+    import time
+    deadline = time.time() + max_wait
+    last_health = None
+    while time.time() < deadline:
+        time.sleep(interval)
+        try:
+            last_health = check_fn()
+            if last_health.get("healthy"):
+                return last_health
+        except Exception:
+            pass
+    # 最后一次检查
+    try:
+        return check_fn()
+    except Exception:
+        return last_health or {"healthy": False, "error": "check failed"}
+
 
 BAK_FILES = [
     OPENCLAW_JSON + ".bak",
@@ -146,7 +182,8 @@ def run_cmd(cmd, timeout=30, cwd=None):
         return -1, "", str(e)
 
 
-def kill_port_zombies(port=18789):
+def kill_port_zombies(port=None):
+    if port is None: port = GATEWAY_PORT
     """清理端口占用残留进程（防止旧进程影响重启）"""
     rc, port_pids, _ = run_cmd(f"/usr/sbin/lsof -ti :{port}", timeout=5)
     if rc == 0 and port_pids.strip():
@@ -397,8 +434,10 @@ class HealthChecker:
         if not result["healthy"]:
             result["error"] = f"健康检查失败(status={last_status})"
 
-        # uptime 异常优先判定为不健康（即使 HTTP 暂时可用，也视为崩溃抖动）
-        if result["crash_loop_suspected"]:
+        # uptime 异常判定
+        # 自动重启模式下：Guardian 自己刚重启的 Gateway，uptime 短是预期的，不判定为不健康
+        # 审批模式下：uptime 短说明是外部原因导致的崩溃循环，应该报警
+        if result["crash_loop_suspected"] and REQUIRE_APPROVAL:
             result["healthy"] = False
             if result["error"]:
                 result["error"] += "; "
@@ -446,15 +485,11 @@ class HealthChecker:
                 timeout=30
             )
             if rc == 0:
-                import time
-                time.sleep(5)
-                health = self.check()
-                if health["healthy"]:
-                    log.info("Layer 1: 自动重启成功 ✅")
-                    return True
-                else:
-                    log.warning("Layer 1: kickstart 后仍不健康: %s", health.get("error", ""))
-                    return False
+                # 不在这里验证——Gateway 启动需要时间（飞书 WS 等），
+                # 让下一个 Guardian 周期（60s）自然检查
+                log.info("Layer 1: kickstart 已执行，等待下一周期验证")
+                self.consecutive_failures = 0  # 重置计数，给 Gateway 启动时间
+                return True
             else:
                 log.error("Layer 1: kickstart 失败: rc=%d %s", rc, stderr[:200] if stderr else "")
                 return False
@@ -505,7 +540,7 @@ class HealthChecker:
         ctx["gateway_uptime_seconds"] = health.get("gateway_uptime_seconds")
 
         # 端口占用
-        rc, stdout, _ = run_cmd("/usr/sbin/lsof -ti :18789", timeout=5)
+        rc, stdout, _ = run_cmd(f"/usr/sbin/lsof -ti :{GATEWAY_PORT}", timeout=5)
         ctx["port_pids"] = stdout if rc == 0 else "无"
 
         return ctx
@@ -642,13 +677,8 @@ class RollbackManager:
                 timeout=30
             )
             if rc == 0:
-                import time
-                time.sleep(5)
-                health = self.check()
-                if health["healthy"]:
-                    log.info("Layer 3: 自动重启成功 ✅")
-                    return True
-                log.warning("Layer 3: kickstart 后仍不健康")
+                log.info("Layer 3: kickstart 已执行，等待下一周期验证")
+                return True
             return False
 
         # 审批模式
@@ -824,13 +854,10 @@ class GuardianAgent:
                     timeout=30
                 )
                 if rc_restart == 0:
-                    import time
-                    time.sleep(5)
-                    health = self.health.check()
-                    if health["healthy"]:
-                        log.info("Layer 1.5: doctor + 重启成功 ✅")
-                        return
-                log.warning("Layer 1.5: doctor --fix 后仍不健康，升级到 Layer 3")
+                    log.info("Layer 1.5: doctor + kickstart 已执行，等待下一周期验证")
+                    self.consecutive_failures = 0
+                    return
+                log.warning("Layer 1.5: kickstart 失败，升级到 Layer 3")
             else:
                 rc_restart, _, _ = run_cmd(
                     f"bash {SAFE_RESTART_SCRIPT} --caller guardian --reason 'L1.5 doctor fix verify'",
