@@ -31,7 +31,7 @@ cd openclaw-starter
 | 能力 | 说明 |
 |------|------|
 | **The Loop 方法论** | 实战检验的 Agent 工作循环：想清楚 → 执行 → 验证 → 交付 → 复盘 |
-| **Cron Fleet（7 任务）** | 每日晨报、自动复盘、Fleet 健康监控、记忆归档等 |
+| **Cron 定时任务** | 内置调度引擎，按需配置晨报、复盘、健康监控等自动化任务 |
 | **23 个 Skills** | 设计、开发、研究、文档、测试、视频——模块化的 AI 能力 |
 | **Coding Agents** | Codex + Claude Code + Gemini CLI 作为 AI 的执行团队 |
 | **语音消息** | whisper.cpp 本地语音转文字，无需 API Key |
@@ -458,7 +458,7 @@ tailscale set --ssh           # 开启 Tailscale SSH
 ```
 你 ←→ Discord/飞书 ←→ OpenClaw Gateway (:3456)
                           ├── Agent (LLM + Skills + Memory)
-                          ├── Cron Fleet (7 定时任务)
+                          ├── Cron Engine (按需配置定时任务)
                           └── MCP Bridge (:9100)
 
 监控面板 → infra-dashboard (:3001)
@@ -478,7 +478,7 @@ openclaw-starter/
 │   ├── *.md.example         # 个性化文件模板
 │   ├── skills/              # 23 个 skills
 │   ├── scripts/             # 27 个自动化脚本
-│   ├── prompts/             # 7 个 cron 模板
+│   ├── prompts/             # cron 模板 + 同步工具
 │   ├── eval/                # 质量评估框架
 │   └── mcp-bridge/          # MCP 服务
 ├── config/                  # 配置模板
