@@ -92,7 +92,7 @@ fi
 if [[ -n "$META_FILE" ]]; then
   if [[ ! -f "$META_FILE" ]]; then
     echo "⛔ BLOCKED — task.meta.json not found: $META_FILE" >&2
-    echo "  Fail-fast per global gate architecture. Run task-start.sh first." >&2
+    echo "  Fail-fast per global gate architecture. Run spawn-agent.sh first." >&2
     exit 1
   fi
 

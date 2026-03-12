@@ -127,3 +127,27 @@ setup() {
 @test "GATES.md covers FAQ" {
   grep -q 'FAQ\|--no-verify' "$REPO_ROOT/docs/GATES.md"
 }
+
+# --- physicalize sync tests ---
+
+@test "dead scripts removed (coding-preflight, task-* lifecycle, spec-verify)" {
+  for s in coding-preflight task-start task-selftest task-deliver task-close task-flow spec-verify; do
+    [ ! -f "$HOOKS_DIR/../scripts/${s}.sh" ]
+  done
+}
+
+@test "spawn-agent.sh exists and is executable" {
+  [ -x "$HOOKS_DIR/../scripts/spawn-agent.sh" ]
+}
+
+@test "spawn-agent.sh has 3 physical gates" {
+  local src
+  src=$(cat "$HOOKS_DIR/../scripts/spawn-agent.sh")
+  echo "$src" | grep -q "git rev-parse"
+  echo "$src" | grep -q "AGENTS.md"
+}
+
+@test "verify-test-diff.sh references spawn-agent not task-start" {
+  ! grep -q "task-start" "$HOOKS_DIR/../scripts/verify-test-diff.sh"
+  grep -q "spawn-agent" "$HOOKS_DIR/../scripts/verify-test-diff.sh"
+}
