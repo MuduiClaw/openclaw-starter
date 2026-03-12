@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.openclaw.infra-dashboard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/apollos/projects/infra-dashboard/server.js</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>/Users/apollos/projects/infra-dashboard</string>
+    <key>StandardOutPath</key>
+    <string>/Users/apollos/.openclaw/logs/dashboard.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/apollos/.openclaw/logs/dashboard.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/apollos/.local/bin:/Users/apollos/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/apollos</string>
+        <key>USER</key>
+        <string>apollos</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+        <key>PORT</key>
+        <string>3001</string>
+        <key>DASHBOARD_TOKEN</key>
+        <string>0000</string>
+    </dict>
+</dict>
+</plist>
