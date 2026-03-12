@@ -1,0 +1,112 @@
+name: responsible-pr-gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/changed_files.txt
+          echo "changed_files:"
+          cat /tmp/changed_files.txt || true
+
+      - name: Classify changes
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          code_changed=0
+          responsible_changed=0
+          ui_changed=0
+
+          while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+
+            case "$f" in
+              *.py|*.js|*.jsx|*.ts|*.tsx|*.go|*.rs|*.java|*.c|*.cc|*.cpp|*.h|*.hpp|*.sh|*.bash|*.zsh|*.rb|*.php|*.json|*.yml|*.yaml|*.toml|*.ini|*.conf|scripts/*|config/*|skills/*|.github/workflows/*)
+                code_changed=1 ;;
+            esac
+
+            case "$f" in
+              docs/*|content-pipeline/*|memory/archive/*|scripts/*|config/*|skills/*)
+                responsible_changed=1 ;;
+            esac
+
+            case "$f" in
+              app/*|web/*|frontend/*|ui/*|components/*|*.tsx|*.jsx|*.css|*.scss)
+                ui_changed=1 ;;
+            esac
+          done < /tmp/changed_files.txt
+
+          echo "code_changed=$code_changed" >> "$GITHUB_OUTPUT"
+          echo "responsible_changed=$responsible_changed" >> "$GITHUB_OUTPUT"
+          echo "ui_changed=$ui_changed" >> "$GITHUB_OUTPUT"
+
+      - name: Save PR body
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/pr_body.txt <<'EOF'
+          ${{ github.event.pull_request.body }}
+          EOF
+
+      - name: Enforce UI screenshot in PR body
+        if: steps.classify.outputs.ui_changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Eiq '!\[[^\]]*\]\([^\)]*\)' /tmp/pr_body.txt; then
+            echo "PR_GATE_FAIL reason=missing_screenshot_for_ui_change"
+            exit 1
+          fi
+          echo "PR_GATE_PASS ui_screenshot_present"
+
+      - name: Enforce tri-review for code changes
+        if: steps.classify.outputs.code_changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tri_file="$(grep -Eo '^TRI_REVIEW_FILE:[[:space:]]*\S+' /tmp/pr_body.txt | head -n1 | sed -E 's/^TRI_REVIEW_FILE:[[:space:]]*//')"
+          if [[ -z "$tri_file" ]]; then
+            echo "PR_GATE_FAIL reason=missing_TRI_REVIEW_FILE_in_pr_body"
+            exit 1
+          fi
+
+          [[ "$tri_file" != /* ]] || { echo "PR_GATE_FAIL reason=tri_file_must_be_repo_relative path=$tri_file"; exit 1; }
+          [[ -f "$tri_file" ]] || { echo "PR_GATE_FAIL reason=tri_file_not_found path=$tri_file"; exit 1; }
+
+          bash scripts/tri-review-gate.sh "$tri_file"
+          echo "PR_GATE_PASS tri_review"
+
+      - name: Enforce universal gate for responsible changes
+        if: steps.classify.outputs.responsible_changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract_file="$(grep -Eo '^TASK_CONTRACT_FILE:[[:space:]]*\S+' /tmp/pr_body.txt | head -n1 | sed -E 's/^TASK_CONTRACT_FILE:[[:space:]]*//')"
+          evidence_file="$(grep -Eo '^TASK_EVIDENCE_FILE:[[:space:]]*\S+' /tmp/pr_body.txt | head -n1 | sed -E 's/^TASK_EVIDENCE_FILE:[[:space:]]*//')"
+
+          if [[ -z "$contract_file" || -z "$evidence_file" ]]; then
+            echo "PR_GATE_FAIL reason=missing_task_contract_or_evidence_in_pr_body"
+            exit 1
+          fi
+
+          [[ "$contract_file" != /* ]] || { echo "PR_GATE_FAIL reason=contract_must_be_repo_relative path=$contract_file"; exit 1; }
+          [[ "$evidence_file" != /* ]] || { echo "PR_GATE_FAIL reason=evidence_must_be_repo_relative path=$evidence_file"; exit 1; }
+          [[ -f "$contract_file" ]] || { echo "PR_GATE_FAIL reason=contract_not_found path=$contract_file"; exit 1; }
+          [[ -f "$evidence_file" ]] || { echo "PR_GATE_FAIL reason=evidence_not_found path=$evidence_file"; exit 1; }
+
+          bash scripts/responsible/universal-gate.sh "$contract_file" "$evidence_file"
+          echo "PR_GATE_PASS universal_gate"

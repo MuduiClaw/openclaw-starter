@@ -1,57 +1,88 @@
 #!/usr/bin/env bash
-# PRE-PUSH gate: Quality checks before push
+# PRE-PUSH gate: Global pre-push checks (shared across all projects)
+# Only runs lightweight checks (< 5s total). Heavy checks stay in CI.
+# shellcheck disable=SC2034
 set -euo pipefail
 
 echo "🔍 Pre-push gate..."
 
-# shellcheck disable=SC2034
+# Workspace repos (docs/scripts/config) get relaxed checks: warn only, don't block.
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+WORKSPACE_MODE=0
+if [[ -f "$repo_root/SOUL.md" || -f "$repo_root/HEARTBEAT.md" ]]; then
+  WORKSPACE_MODE=1
+fi
+
+# Get commits being pushed
 REMOTE="$1"
 z40=0000000000000000000000000000000000000000
 failed=0
-repo_root="$(git rev-parse --show-toplevel)"
 
-# shellcheck disable=SC2034
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [[ "$local_sha" == "$z40" ]]; then
+    # Deleting ref, skip
     continue
   fi
 
   if [[ "$remote_sha" == "$z40" ]]; then
     echo "  ❌ Pushing new branch — we only push main, no feature branches"
+    echo "     ref: $local_ref"
     failed=1
     continue
   fi
   range="$remote_sha..$local_sha"
 
-  # Gate 1: Conventional commit format
-  while IFS= read -r msg; do
-    [[ "$msg" == Merge* ]] && continue
-    if ! echo "$msg" | grep -qE '^(feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert|init|wip|backup|journal|spec)(\([^)]+\))?(!)?:'; then
-      echo "  ❌ Bad commit format: $msg"
-      echo "     Expected: type[(scope)]: description"
-      failed=1
-    fi
-  done < <(git log --format='%s' "$range" 2>/dev/null || true)
+  # Get files changed in this push
+  changed_files=()
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    changed_files+=("$f")
+  done < <(git diff --name-only "$range" 2>/dev/null || true)
 
-  # Gate 2: Anti-salami spec check (only for projects with tasks/)
-  if [[ -d "$repo_root/tasks" ]]; then
-    impl_count=$(git log --no-merges --format="" --name-only --invert-grep -E --grep="^(backup|journal):" "$range" 2>/dev/null | grep -E '\.(sh|ts|tsx|js|jsx|py|go|rs)$' | sort -u | wc -l || true)
-    impl_count=$(echo "$impl_count" | tr -d ' ')
-    if [[ "$impl_count" -ge 8 ]]; then
-      has_spec=0
-      if git log --format='%B' "$range" 2>/dev/null | grep -qE '\[spec:[^]]*\]'; then
-        has_spec=1
-      fi
-      if [[ $has_spec -eq 0 ]]; then
-        echo "  ⛔ [Gate 2] 累积 ${impl_count} 个 impl 文件但无 spec 引用"
+  # Gate 1: Conventional commit format (fast regex check)
+  # Workspace repos: warn only, don't block
+  while IFS= read -r msg; do
+    # Skip merge commits
+    [[ "$msg" == Merge* ]] && continue
+    # Check format: type[(scope)]: description
+    if ! echo "$msg" | grep -qE '^(feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert|init|wip|i18n|backup|journal|spec)(\([^)]+\))?(!)?:'; then
+      if [[ $WORKSPACE_MODE -eq 1 ]]; then
+        echo "  ⚠️  Loose commit format (workspace): $msg"
+      else
+        echo "  ❌ Bad commit format: $msg"
+        echo "     Expected: type[(scope)]: description"
         failed=1
       fi
     fi
-  fi
+  done < <(git log --format='%s' "$range" 2>/dev/null || true)
 
-  # Gate 3: Pre-commit trailer check
+  # Gate 2: Cumulative impl file check (anti-salami-slicing)
+  # Skip for workspace repos — mostly scripts/config, not product code
+  if [[ $WORKSPACE_MODE -eq 0 ]]; then
+  impl_count=$(git log --no-merges --format="" --name-only --invert-grep -E --grep="^(backup|journal):" "$range" 2>/dev/null | grep -E '\.(sh|ts|tsx|js|jsx|py|go|rs)$' | sort -u | wc -l || true)
+  impl_count=$(echo "$impl_count" | tr -d ' ')  # trim whitespace from wc
+
+  repo_root="$(git rev-parse --show-toplevel)"
+  if [[ "$impl_count" -ge 8 && -d "$repo_root/tasks" ]]; then
+    has_spec=0
+    if git log --format='%B' "$range" 2>/dev/null | grep -qE '\[spec:[^]]*\]'; then
+      has_spec=1
+    fi
+    if [[ $has_spec -eq 0 ]]; then
+      echo "  ⛔ [Gate 2] 累积 ${impl_count} 个 impl 文件但无 spec 引用"
+      echo "     在任一 commit message 中加 [spec:slug] 引用 tasks/slug.md"
+      echo "     Spec 是前置规划，不是事后文档——先写 spec 再动手"
+      failed=1
+    fi
+  fi
+  fi  # end WORKSPACE_MODE gate 2 skip
+
+  # Gate 3: Pre-commit trailer check (catch hook bypasses)
+  # Skip for workspace repos — cron/subagent commits don't go through pre-commit
+  if [[ $WORKSPACE_MODE -eq 0 ]]; then
   while IFS= read -r sha; do
     msg=$(git log -1 --format='%B' "$sha")
+    # Skip merge commits and backup/journal
     first_line=$(echo "$msg" | head -1)
     case "$first_line" in
       Merge*|backup:*|journal:*) continue ;;
@@ -61,11 +92,64 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       failed=1
     fi
   done < <(git rev-list "$range" 2>/dev/null || true)
+  fi  # end WORKSPACE_MODE gate 3 skip
+
+  # Gate 4: Cumulative TDD enforcement — push must include tests if it includes code
+  # Checks the ENTIRE push range (not per-commit). Code in commit A + tests in commit B = OK.
+  # Skips repos without a test framework (warn only).
+  g4_has_code=0
+  g4_has_tests=0
+  g4_code_list=""
+
+  # Detect test framework in repo
+  g4_has_framework=0
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  if [[ -f "$repo_root/vitest.config.ts" || -f "$repo_root/vitest.config.mts" || -f "$repo_root/vitest.config.js" ]]; then
+    g4_has_framework=1
+  elif grep -q '"jest"' "$repo_root/package.json" 2>/dev/null; then
+    g4_has_framework=1
+  elif [[ -f "$repo_root/pytest.ini" ]] || grep -q "pytest" "$repo_root/pyproject.toml" 2>/dev/null; then
+    g4_has_framework=1
+  elif [[ -f "$repo_root/go.mod" ]]; then
+    g4_has_framework=1
+  elif [[ -f "$repo_root/Cargo.toml" ]]; then
+    g4_has_framework=1
+  elif command -v bats &>/dev/null && find "$repo_root" -maxdepth 2 -name "*.bats" -print -quit 2>/dev/null | grep -q .; then
+    g4_has_framework=1
+  fi
+
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    # Skip docs, configs, styles, assets, lockfiles
+    echo "$f" | grep -qE '\.(md|txt|rst|adoc|mdx|json|ya?ml|toml|ini|env|css|scss|sass|less|svg|png|jpg|gif|ico|woff2?|eot|ttf)$' && continue
+    echo "$f" | grep -qE '(package-lock|yarn\.lock|pnpm-lock|Cargo\.lock|poetry\.lock|go\.sum)' && continue
+    # Test file?
+    if echo "$f" | grep -qE '(\.|_)(test|spec)\.[^/]+$|^(tests|__tests__|test|spec)/|^test_[^/]+\.[^/]+$|\.bats$'; then
+      g4_has_tests=1
+    else
+      g4_has_code=1
+      g4_code_list="$g4_code_list\n    $f"
+    fi
+  done <<< "$(git diff --name-only "$range" 2>/dev/null || true)"
+
+  if [[ $g4_has_code -eq 1 && $g4_has_tests -eq 0 ]]; then
+    if [[ $g4_has_framework -eq 1 ]]; then
+      echo "  ❌ [Gate 4 TDD] Push has code changes but no test changes"
+      echo -e "     Code files:$g4_code_list"
+      echo "     Fix: add tests, or use: bash scripts/git-push-safe.sh"
+      # Write file list for auto-remediation
+      echo -e "$g4_code_list" | sed 's/^[[:space:]]*//' | grep -v '^$' > /tmp/.tdd-gate4-files 2>/dev/null || true
+      failed=1
+    else
+      echo "  ⚠️  [Gate 4 TDD] Code changes without tests (no test framework detected — warning only)"
+    fi
+  fi
 
 done
 
 if [[ $failed -eq 1 ]]; then
-  echo "⛔ PRE-PUSH GATE FAILED"
+  echo ""
+  echo "⛔ PRE-PUSH GATE FAILED — fix issues above before pushing"
   exit 1
 fi
 

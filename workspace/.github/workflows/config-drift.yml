@@ -1,0 +1,79 @@
+name: Config Drift Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prompts/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'prompts/**'
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check prompt file consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking prompt file consistency..."
+          echo "---"
+
+          errors=0
+          warnings=0
+          total=0
+
+          for f in prompts/cron/*.prompt.md; do
+            [[ -f "$f" ]] || continue
+            total=$((total + 1))
+            basename="$(basename "$f")"
+
+            # Check frontmatter exists and has required fields
+            if ! head -1 "$f" | grep -q '^---'; then
+              echo "❌ $basename — missing frontmatter"
+              errors=$((errors + 1))
+              continue
+            fi
+
+            # Extract frontmatter (between first two ---)
+            frontmatter="$(sed -n '/^---$/,/^---$/p' "$f" | sed '1d;$d')"
+
+            for field in job_id version model schedule; do
+              if ! echo "$frontmatter" | grep -q "^${field}:"; then
+                echo "❌ $basename — missing frontmatter field: $field"
+                errors=$((errors + 1))
+              fi
+            done
+
+            # Check version is semver-ish (v1, v2, v1.1, etc)
+            version="$(echo "$frontmatter" | grep '^version:' | sed 's/version:[[:space:]]*//' | tr -d '"' | tr -d "'")"
+            if [[ -n "$version" ]] && ! echo "$version" | grep -Eq '^v[0-9]+(\.[0-9]+)*$'; then
+              echo "⚠️  $basename — version '$version' doesn't match vN.N format"
+              warnings=$((warnings + 1))
+            fi
+
+            # Check job_id is valid UUID-ish
+            job_id="$(echo "$frontmatter" | grep '^job_id:' | sed 's/job_id:[[:space:]]*//' | tr -d '"' | tr -d "'")"
+            if [[ -n "$job_id" ]] && ! echo "$job_id" | grep -Eq '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$|^[0-9a-f]{8}$'; then
+              echo "⚠️  $basename — job_id '$job_id' format unexpected"
+              warnings=$((warnings + 1))
+            fi
+
+            echo "✅ $basename (v${version:-?})"
+          done
+
+          echo "---"
+          echo "Checked $total prompt files: $errors error(s), $warnings warning(s)"
+
+          if [[ $errors -gt 0 ]]; then
+            echo ""
+            echo "⛔ CONFIG DRIFT CHECK FAILED"
+            echo "  $errors prompt file(s) have structural issues."
+            echo "  Each .prompt.md must have frontmatter with: job_id, version, model, schedule"
+            exit 1
+          fi

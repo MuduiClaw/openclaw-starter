@@ -810,6 +810,16 @@ if [ -d "$DOTFILES_DIR" ]; then
     progress_done "Git quality gates"
   fi
 
+  # OpenClaw CLI wrapper (self-destruct protection + config preflight)
+  WRAPPER_SRC="${SCRIPTS_DIR}/dotfiles/openclaw-wrapper"
+  WRAPPER_DST="${HOME}/.local/bin/openclaw"
+  if [ -f "$WRAPPER_SRC" ]; then
+    mkdir -p "${HOME}/.local/bin"
+    cp "$WRAPPER_SRC" "$WRAPPER_DST"
+    chmod +x "$WRAPPER_DST"
+    progress_done "OpenClaw CLI wrapper"
+  fi
+
   # nanorc
   if [ -f "${DOTFILES_DIR}/nanorc" ] && [ ! -f "${HOME}/.nanorc" ]; then
     cp "${DOTFILES_DIR}/nanorc" "${HOME}/.nanorc"

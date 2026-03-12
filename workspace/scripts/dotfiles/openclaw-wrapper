@@ -1,0 +1,44 @@
+#!/bin/bash
+# openclaw guard wrapper — hard gates for dangerous operations
+# Gateway plist PATH has ~/.local/bin before /opt/homebrew/bin,
+# so gateway child processes hit this wrapper first.
+# Terminal users hit /opt/homebrew/bin/openclaw directly (Homebrew first in shell PATH).
+
+REAL_OPENCLAW="/opt/homebrew/bin/openclaw"
+
+# ─── Gate 1: Self-destruct prevention ───
+# Block gateway stop/restart/install when called from within gateway process tree
+if [[ "$1" == "gateway" ]] && [[ "${2:-}" =~ ^(install|stop|restart)$ ]]; then
+    gw_pid=$(/usr/sbin/lsof -i :18789 -sTCP:LISTEN -t 2>/dev/null | head -1)
+    if [ -n "$gw_pid" ]; then
+        p=$$
+        while [ "$p" -gt 1 ] 2>/dev/null; do
+            if [ "$p" = "$gw_pid" ]; then
+                echo "BLOCKED: 'openclaw gateway $2' rejected — running inside gateway process tree (self-destruct prevention)" >&2
+                exit 1
+            fi
+            p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+            [ -z "$p" ] && break
+        done
+    fi
+fi
+
+# ─── Gate 2: Config change preflight ───
+# config.patch must pass validate first; logs the change for audit
+if [[ "$1" == "gateway" ]] && [[ "${2:-}" == "config.patch" ]]; then
+    # Step 1: Validate current config before patching
+    validate_output=$("$REAL_OPENCLAW" config validate 2>&1)
+    validate_exit=$?
+    if [[ $validate_exit -ne 0 ]]; then
+        echo "⛔ CONFIG GATE: config validate failed (exit $validate_exit) — fix config before patching:" >&2
+        echo "$validate_output" >&2
+        exit 1
+    fi
+
+    # Step 2: Log the patch for audit trail
+    log_dir="$HOME/.openclaw/logs"
+    mkdir -p "$log_dir"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] config.patch args: ${*:3}" >> "$log_dir/config-patch-audit.log"
+fi
+
+exec "$REAL_OPENCLAW" "$@"

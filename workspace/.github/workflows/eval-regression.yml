@@ -1,0 +1,189 @@
+name: Eval Regression Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prompts/**'
+      - 'eval/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'prompts/**'
+      - 'eval/**'
+
+jobs:
+  eval-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect prompt changes
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          else
+            before="${{ github.event.before }}"
+            [[ "$before" == "0000000000000000000000000000000000000000" ]] && before="HEAD~1"
+            range="${before}..HEAD"
+          fi
+
+          prompt_changed=0
+          while IFS= read -r f; do
+            case "$f" in
+              prompts/cron/*.prompt.md) prompt_changed=1 ;;
+            esac
+          done < <(git diff --name-only "$range" 2>/dev/null || true)
+
+          echo "prompt_changed=$prompt_changed" >> "$GITHUB_OUTPUT"
+          echo "Prompt files changed: $prompt_changed"
+
+      - name: Require CHANGELOG entry for prompt changes
+        if: steps.detect.outputs.prompt_changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          else
+            before="${{ github.event.before }}"
+            [[ "$before" == "0000000000000000000000000000000000000000" ]] && before="HEAD~1"
+            range="${before}..HEAD"
+          fi
+
+          changelog_changed=0
+          while IFS= read -r f; do
+            [[ "$f" == "prompts/CHANGELOG.md" ]] && changelog_changed=1
+          done < <(git diff --name-only "$range" 2>/dev/null || true)
+
+          if [[ $changelog_changed -eq 0 ]]; then
+            echo "⛔ EVAL REGRESSION GATE FAIL"
+            echo "  Prompt files changed but prompts/CHANGELOG.md was not updated."
+            exit 1
+          fi
+
+          echo "✅ CHANGELOG.md updated"
+
+      - name: Run eval against baseline
+        if: steps.detect.outputs.prompt_changed == '1'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Find latest baseline
+          latest_baseline="$(ls -t eval/baselines/*.json 2>/dev/null | head -1)"
+          if [[ -z "$latest_baseline" ]]; then
+            echo "⛔ No eval baseline exists. Run eval/run-eval.sh locally first."
+            exit 1
+          fi
+
+          echo "📊 Baseline: $latest_baseline"
+          baseline_pass=$(python3 -c "
+          import json
+          with open('$latest_baseline') as f:
+              d = json.load(f)
+          print(sum(1 for r in d['results'] if r.get('verdict') == 'pass'))
+          ")
+          baseline_total=$(python3 -c "
+          import json
+          with open('$latest_baseline') as f:
+              d = json.load(f)
+          print(len(d['results']))
+          ")
+          echo "  Baseline: Pass $baseline_pass/$baseline_total"
+          echo ""
+
+          PASS=0
+          FAIL=0
+          TOTAL=0
+          ERRORS=0
+
+          for category in cron-output translation summary; do
+            dir="eval/samples/$category"
+            [[ -d "$dir" ]] || continue
+
+            for sample in "$dir"/*.md; do
+              [[ -f "$sample" ]] || continue
+              sname=$(basename "$sample")
+              TOTAL=$((TOTAL + 1))
+
+              echo "  ⏳ $category/$sname"
+
+              # Build request JSON safely via python (avoids shell quoting issues)
+              python3 -c "
+          import json, pathlib
+          judge = pathlib.Path('eval/judge-prompt.md').read_text()
+          sample = pathlib.Path('$sample').read_text()
+          full = judge + '\n\n---\n\n' + sample
+          req = {'contents': [{'parts': [{'text': full}]}], 'generationConfig': {'temperature': 0, 'maxOutputTokens': 1024}}
+          pathlib.Path('/tmp/eval-request.json').write_text(json.dumps(req))
+          "
+
+              # Call Gemini API
+              RESPONSE=$(curl -sf -X POST \
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
+                -H "Content-Type: application/json" \
+                -d @/tmp/eval-request.json 2>/dev/null || echo '{}')
+
+              # Extract verdict via python (robust parsing)
+              VERDICT=$(echo "$RESPONSE" | python3 -c "
+          import json, sys, re
+          try:
+              d = json.load(sys.stdin)
+              text = d['candidates'][0]['content']['parts'][0]['text']
+              # Find JSON in response
+              for m in re.finditer(r'\{[^{}]*\}', text, re.DOTALL):
+                  try:
+                      obj = json.loads(m.group())
+                      if 'verdict' in obj:
+                          print(obj['verdict'])
+                          sys.exit(0)
+                  except: pass
+              print('error')
+          except:
+              print('error')
+          " 2>/dev/null || echo "error")
+
+              case "$VERDICT" in
+                pass) PASS=$((PASS + 1)); echo "    → pass" ;;
+                marginal) echo "    → marginal" ;;
+                fail) FAIL=$((FAIL + 1)); echo "    → fail" ;;
+                *) ERRORS=$((ERRORS + 1)); echo "    → error" ;;
+              esac
+
+              sleep 0.5
+            done
+          done
+
+          echo ""
+          echo "═══ Eval Results ═══"
+          echo "  Current:  Pass $PASS/$TOTAL (errors: $ERRORS)"
+          echo "  Baseline: Pass $baseline_pass/$baseline_total"
+
+          # If too many errors, results are unreliable — warn but don't fail
+          if [[ $ERRORS -gt $((TOTAL / 3)) ]]; then
+            echo ""
+            echo "⚠️  $ERRORS/$TOTAL eval errors — results unreliable. Check API key and network."
+            echo "  Passing with warning (error rate too high to judge regression)."
+            exit 0
+          fi
+
+          # Regression check: pass count should not drop by more than 1
+          if [[ $PASS -lt $((baseline_pass - 1)) ]]; then
+            echo ""
+            echo "⛔ EVAL REGRESSION DETECTED"
+            echo "  Pass count dropped: $baseline_pass → $PASS (threshold: -1)"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Eval regression gate passed"

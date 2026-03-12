@@ -1,0 +1,80 @@
+name: Pre-commit Gate Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-precommit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check pre-commit gate trailers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          else
+            # push: check commits in this push
+            before="${{ github.event.before }}"
+            if [[ "$before" == "0000000000000000000000000000000000000000" ]]; then
+              # initial push — check last commit only
+              range="HEAD~1..HEAD"
+            else
+              range="${before}..HEAD"
+            fi
+          fi
+
+          echo "Checking commits in range: $range"
+          echo "---"
+
+          violations=0
+          total=0
+
+          while IFS= read -r sha; do
+            [[ -z "$sha" ]] && continue
+            total=$((total + 1))
+            subject="$(git log -1 --format='%s' "$sha")"
+
+            # Skip auto-generated commits (no human review needed)
+            case "$subject" in
+              Merge\ *|Revert\ \"*|backup:*|spec:*) 
+                echo "⏭  $sha — $subject (auto-commit, skipped)"
+                continue ;;
+            esac
+
+            body="$(git log -1 --format='%B' "$sha")"
+            if echo "$body" | grep -q '^Pre-commit-gate: passed'; then
+              echo "✅ $sha — $subject"
+            else
+              echo "❌ $sha — $subject"
+              echo "   Missing 'Pre-commit-gate: passed' trailer."
+              echo "   This commit was likely made with --no-verify, bypassing pre-commit checks."
+              violations=$((violations + 1))
+            fi
+          done < <(git log --format='%H' --reverse "$range" 2>/dev/null || true)
+
+          echo "---"
+          echo "Checked $total commits, $violations violation(s)"
+
+          if [[ $violations -gt 0 ]]; then
+            echo ""
+            echo "⛔ PRE-COMMIT GATE VIOLATION"
+            echo ""
+            echo "  $violations commit(s) are missing the pre-commit gate trailer."
+            echo "  This means --no-verify was used to bypass the pre-commit hook."
+            echo ""
+            echo "  To fix:"
+            echo "  1. Amend each violating commit:"
+            echo "     git rebase -i <base> and re-commit without --no-verify"
+            echo "  2. Or squash into a new commit that passes the pre-commit hook"
+            echo ""
+            exit 1
+          fi
