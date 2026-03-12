@@ -624,11 +624,10 @@ if ! sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
   info "Enabling macOS Remote Login (SSH)..."
   # Try systemsetup first (needs Full Disk Access on Ventura+)
   if ! sudo systemsetup -setremotelogin on 2>/dev/null; then
-    # Fallback: launchctl — works without FDA
+    # Fallback: launchctl load — works without FDA
     info "systemsetup 需要 Full Disk Access，使用 launchctl 替代..."
-    sudo launchctl enable system/com.openssh.sshd 2>/dev/null || true
-    sudo launchctl kickstart -k system/com.openssh.sshd 2>/dev/null || true
-    if sudo launchctl print system/com.openssh.sshd 2>/dev/null | grep -q "state = running"; then
+    sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
+    if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no localhost "exit 0" 2>/dev/null; then
       progress_done "SSH (Remote Login via launchctl)"
     else
       warn "SSH 开启失败 — 请手动: 系统设置 → 通用 → 共享 → 远程登录"
