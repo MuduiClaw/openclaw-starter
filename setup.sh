@@ -620,52 +620,65 @@ else
 fi
 
 # --- Enable macOS SSH (Remote Login) ---
-# macOS Ventura+ 锁死了命令行开 SSH 的方式（需要 Full Disk Access），
-# 这里尝试所有已知方法，都失败则引导用户手动在 UI 开启。
+# macOS Ventura+ 锁死了命令行开启 SSH 的方式（需要 Full Disk Access），
+# 这里尝试自动方式，失败则自动打开设置页面引导用户点一下。
 SSH_ENABLED=false
+
+# 检查是否已开启
 if sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
   SSH_ENABLED=true
 fi
 
+# Attempt 1: systemsetup (需要 Terminal 有 Full Disk Access)
 if ! $SSH_ENABLED; then
-  info "Enabling macOS Remote Login (SSH)..."
-  # Attempt 1: systemsetup (需要 Terminal 有 Full Disk Access)
-  if sudo systemsetup -setremotelogin on 2>/dev/null; then
-    SSH_ENABLED=true
-  fi
+  sudo systemsetup -setremotelogin on 2>/dev/null && SSH_ENABLED=true
 fi
 
+# Attempt 2: launchctl load (部分 macOS 版本可用)
 if ! $SSH_ENABLED; then
-  # Attempt 2: launchctl load (部分 macOS 版本可用)
   sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
   sleep 1
-  if sudo launchctl list 2>/dev/null | grep -q "com.openssh.sshd"; then
-    SSH_ENABLED=true
-  fi
+  sudo launchctl list 2>/dev/null | grep -q "com.openssh.sshd" && SSH_ENABLED=true
 fi
 
 if $SSH_ENABLED; then
   progress_done "SSH (Remote Login)"
 else
-  # 所有自动方式都失败，需要手动
+  # 自动打开系统设置到共享页面
   echo ""
-  warn "⚠️  macOS 限制：无法自动开启 SSH"
-  printf "   ${BOLD}请手动开启:${NC}\n"
-  printf "   1. 打开 ${CYAN}系统设置${NC}\n"
-  printf "   2. ${CYAN}通用${NC} → ${CYAN}共享${NC}\n"
-  printf "   3. 打开 ${CYAN}远程登录${NC} (Remote Login)\n"
+  warn "⚠️  macOS 限制：需要手动开启远程登录"
   echo ""
-  info "等待你手动开启 SSH..."
-  info "开启后按回车继续（或输入 skip 跳过）"
-  read -r SSH_REPLY </dev/tty 2>/dev/null || SSH_REPLY="skip"
-  if [[ "$SSH_REPLY" != "skip" ]]; then
+  printf "   ${BOLD}正在打开系统设置...${NC}\n"
+  printf "   请在弹出的设置页面中找到 ${CYAN}远程登录 (Remote Login)${NC} 并打开\n"
+  echo ""
+  # macOS Ventura+ 使用新的 URL scheme
+  open "x-apple.systempreferences:com.apple.Sharing-Settings.extension" 2>/dev/null \
+    || open "/System/Library/PreferencePanes/SharingPref.prefPane" 2>/dev/null \
+    || open "x-apple.systempreferences:com.apple.preferences.sharing" 2>/dev/null
+  # 轮询等待用户开启（最多 120 秒）
+  printf "   等待开启中"
+  SSH_WAIT=0
+  while [[ $SSH_WAIT -lt 120 ]]; do
     if sudo systemsetup -getremotelogin 2>/dev/null | grep -qi "on"; then
-      progress_done "SSH (Remote Login — 手动开启)"
-    else
-      warn "SSH 仍未检测到开启，后续可能无法远程访问"
+      SSH_ENABLED=true
+      break
     fi
+    # 备选检测: 端口 22 是否在监听
+    if lsof -iTCP:22 -sTCP:LISTEN -P 2>/dev/null | grep -q LISTEN; then
+      SSH_ENABLED=true
+      break
+    fi
+    printf "."
+    sleep 2
+    SSH_WAIT=$((SSH_WAIT + 2))
+  done
+  echo ""
+
+  if $SSH_ENABLED; then
+    progress_done "SSH (Remote Login — 手动开启 ✅)"
   else
-    warn "SSH 已跳过 — 远程访问需要后续手动开启"
+    warn "SSH 未开启（超时 120s）— Tailscale 远程访问需要此功能"
+    warn "后续可在 系统设置 → 通用 → 共享 → 远程登录 中开启"
   fi
 fi
 

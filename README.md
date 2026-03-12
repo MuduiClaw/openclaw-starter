@@ -388,16 +388,18 @@ setup.sh 会自动安装 [Tailscale](https://tailscale.com/) 并开启 Tailscale
 
 1. `brew install tailscale` — 安装 CLI
 2. 启动 tailscaled daemon（三级 fallback：brew services → install-system-daemon → 手动启动）
-3. `tailscale login` — 自动打开浏览器授权（**唯一需要手动操作的步骤**）
-4. `tailscale set --ssh` — 开启 Tailscale SSH
+3. `tailscale login` — 自动打开浏览器授权（**需手动点击确认**）
+4. 开启 macOS 远程登录 — 自动尝试，失败则**自动打开系统设置页面**，只需点一下开关
 
 ### ⚠️ macOS SSH (Remote Login) 需手动开启
 
-macOS Ventura+ 限制了命令行开启 SSH 的权限。setup.sh 会尝试自动开启，失败时会提示你手动操作：
+macOS Ventura+ 限制了命令行开启 SSH 的权限。setup.sh 会自动尝试，如果失败会：
 
-> **系统设置 → 通用 → 共享 → 远程登录 → 打开**
+1. **自动弹出**系统设置的共享页面
+2. 你只需打开 **远程登录 (Remote Login)** 开关
+3. 脚本自动检测到开启后继续
 
-即使不开 macOS SSH，Tailscale SSH 也能正常工作（走 Tailscale 隧道，不需要 22 端口）。
+> 注意：Homebrew 安装的是 Tailscale CLI 版本，SSH 服务依赖 macOS 原生远程登录（非 Tailscale SSH App 功能）。
 
 ### 授权说明
 
