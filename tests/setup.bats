@@ -125,6 +125,10 @@ assert_script_not_matches() {
   assert_script_contains 'whisper-cli'
 }
 
+@test "setup.sh sets feishu groupPolicy open for personal bot" {
+  assert_script_contains '"groupPolicy": "open"'
+}
+
 @test "setup.sh generates local gateway config and reuses existing gateway tokens" {
   assert_script_contains '# Generate openclaw.json using python3 (safe from shell injection)'
   assert_script_contains 'GATEWAY_TOKEN="${EXISTING_GW_TOKEN:-$(openssl rand -hex 24)}"'

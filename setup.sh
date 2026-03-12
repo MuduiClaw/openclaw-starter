@@ -1196,6 +1196,7 @@ elif ch == "feishu" and E("_OC_FEISHU_APP_ID"):
     channels["feishu"] = {
         "appId": E("_OC_FEISHU_APP_ID"),
         "appSecret": E("_OC_FEISHU_APP_SECRET", ""),
+        "groupPolicy": "open",
     }
 
 state = E("_OC_STATE_DIR")
