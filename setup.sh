@@ -544,18 +544,54 @@ if ! $NO_TAILSCALE; then
     brew install tailscale 2>/dev/null || warn "Tailscale install failed (non-critical)"
   fi
   if command -v tailscale &>/dev/null; then
-    # Start Tailscale service
+    # Start Tailscale daemon — brew services often silently fails on macOS,
+    # so we verify the socket and fallback to explicit tailscaled if needed.
+    TS_SOCKET="/var/run/tailscaled.socket"
+    TS_DAEMON_OK=false
+
+    # Attempt 1: brew services (works on some setups)
     brew services start tailscale 2>/dev/null || true
-    # Check if already logged in
-    if ! perl -e 'alarm 5; exec @ARGV' tailscale status &>/dev/null 2>&1; then
-      echo ""
-      info "下一步将打开浏览器进行 Tailscale 授权"
-      info "完成浏览器中的登录后，返回此窗口继续..."
-      echo ""
-      tailscale login 2>/dev/null || warn "Tailscale login failed — run 'tailscale login' later"
+    for _ in 1 2 3 4 5; do
+      if [[ -S "$TS_SOCKET" ]]; then TS_DAEMON_OK=true; break; fi
+      sleep 1
+    done
+
+    # Attempt 2: explicit tailscaled system daemon
+    if ! $TS_DAEMON_OK; then
+      info "Tailscale daemon not running, installing system daemon..."
+      sudo tailscaled install-system-daemon 2>/dev/null || true
+      for _ in 1 2 3 4 5; do
+        if [[ -S "$TS_SOCKET" ]]; then TS_DAEMON_OK=true; break; fi
+        sleep 1
+      done
     fi
-    # Enable Tailscale SSH
-    tailscale set --ssh 2>/dev/null || true
+
+    # Attempt 3: manual background start as last resort
+    if ! $TS_DAEMON_OK; then
+      info "Fallback: starting tailscaled manually..."
+      sudo tailscaled --state=/var/lib/tailscale/tailscaled.state --socket="$TS_SOCKET" &>/dev/null &
+      disown
+      for _ in 1 2 3 4 5; do
+        if [[ -S "$TS_SOCKET" ]]; then TS_DAEMON_OK=true; break; fi
+        sleep 1
+      done
+    fi
+
+    if ! $TS_DAEMON_OK; then
+      warn "Tailscale daemon failed to start — run 'sudo tailscaled install-system-daemon' manually"
+    else
+      # Check if already logged in
+      if ! perl -e 'alarm 5; exec @ARGV' tailscale status &>/dev/null 2>&1; then
+        echo ""
+        info "下一步将打开浏览器进行 Tailscale 授权"
+        info "完成浏览器中的登录后，返回此窗口继续..."
+        echo ""
+        tailscale login 2>/dev/null || warn "Tailscale login failed — run 'tailscale login' later"
+      fi
+      # Enable Tailscale SSH
+      tailscale set --ssh 2>/dev/null || true
+    fi
+
     TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
     if [[ -n "$TS_IP" ]]; then
       progress_done "Tailscale ($TS_IP)"
