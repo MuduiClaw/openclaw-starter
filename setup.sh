@@ -438,7 +438,8 @@ if [ -f "${SCRIPT_DIR}/workspace/scripts/Brewfile" ]; then
 fi
 
 # --- whisper.cpp model (local speech-to-text, no API key needed) ---
-WHISPER_MODEL="/opt/homebrew/share/whisper-cpp/for-tests-ggml-tiny.bin"
+hash -r 2>/dev/null  # refresh PATH after brew bundle
+WHISPER_MODEL="${BREW_PREFIX}/share/whisper-cpp/for-tests-ggml-tiny.bin"
 if command -v whisper-cli &>/dev/null && [ ! -f "$WHISPER_MODEL" ]; then
   info "Downloading whisper tiny model (74MB)..."
   mkdir -p "$(dirname "$WHISPER_MODEL")"
@@ -1196,7 +1197,7 @@ elif ch == "feishu" and E("_OC_FEISHU_APP_ID"):
     channels["feishu"] = {
         "appId": E("_OC_FEISHU_APP_ID"),
         "appSecret": E("_OC_FEISHU_APP_SECRET", ""),
-        "groupPolicy": "open",
+        "groupPolicy": "open",  # personal bot — no access control needed
     }
 
 state = E("_OC_STATE_DIR")

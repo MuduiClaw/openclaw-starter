@@ -123,6 +123,8 @@ assert_script_not_matches() {
   grep -q 'whisper-cpp' "$REPO_ROOT/workspace/scripts/Brewfile"
   assert_script_contains 'ggml-tiny.bin'
   assert_script_contains 'whisper-cli'
+  # Model path must use BREW_PREFIX, not hardcoded /opt/homebrew (Intel Mac uses /usr/local)
+  assert_script_contains 'WHISPER_MODEL="${BREW_PREFIX}/share/whisper-cpp/for-tests-ggml-tiny.bin"'
 }
 
 @test "setup.sh sets feishu groupPolicy open for personal bot" {
