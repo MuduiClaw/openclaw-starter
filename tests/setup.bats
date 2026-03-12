@@ -184,3 +184,16 @@ assert_script_not_matches() {
   assert_script_contains 'go/bin'
   assert_script_contains '.zprofile'
 }
+
+@test "release.sh exists and passes syntax check" {
+  [ -x "$REPO_ROOT/scripts/release.sh" ]
+  run bash -n "$REPO_ROOT/scripts/release.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "release.sh --help exits cleanly" {
+  run bash "$REPO_ROOT/scripts/release.sh" --help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--version"* ]]
+  [[ "$output" == *"--dry-run"* ]]
+}

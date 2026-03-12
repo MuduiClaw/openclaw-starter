@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### 新功能
+- **可选 CLI 工具自动安装**：himalaya (邮件)、gog (Google)、bird (X/Twitter)、blogwatcher (RSS)
+  - blogwatcher 自动装 Go + 编译 + 软链到 `/opt/homebrew/bin/` + `.zprofile` PATH
+  - 全部 non-critical，失败不阻塞安装
+- **项目级 Git 门禁** (`project-gates.sh`)：P1 Secrets 扫描 + P2 Privacy 拦截
+- **SPEC-TEMPLATE.md**：标准化 spec 模板，Gate 0.7 配套
+- **文档重构**：README 精简到 184 行 + 独立 `docs/SETUP-GUIDE.md` + `docs/FAQ.md`（30+ QA）
+
+### 改进
+- 移除 Mac mini 专属 cron 模板（starter 出厂零 cron）
+- 移除预装个人 CLI 工具（改为可选安装段）
+
 ## [1.3.1] - 2026-03-11
 
 ### 公开发布清理
@@ -30,6 +44,35 @@
 ### 修复
 - native addon 打包到 standalone tarball（release-dashboard.sh）
 - native addon rebuild 失败时 fallback 到 fresh install
+
+## [1.3.1-rc] - 2026-03-11 ~ 2026-03-12
+
+> 以下变更在 1.3.1 发版后陆续合入，属于下次发版内容。
+
+### 新功能
+- **whisper-cpp 本地 STT**：语音消息转文字，无需 API Key，自动下载 tiny 模型
+- **MiniMax VL-01 视觉模型**：setup 配置自动加入图片理解能力
+- **Web/Media/Exec 工具模板**：setup 生成的 config 包含完整 tools 段
+- **Brave Search 交互式配置**：安装时引导配置搜索 API Key
+- **飞书 groupPolicy=open**：消除间歇性配对弹窗
+
+### 安全与健壮性
+- **Guardian 默认自动重启**：不再需要审批门禁
+- **Guardian 端口自动读取**：不再硬编码 18789
+- **Tailscale 三级启动保障**：brew services → install-system-daemon → 手动
+- **Tailscale login 自动弹浏览器**
+- **macOS SSH 兼容 Ventura+ FDA 限制**：自动弹系统设置 + 轮询等待
+- **Node.js 最低版本改为 v25+**
+
+### Git Gates
+- **Gate 文件补齐 + hooks 路径去硬编码**
+- **Intel Mac 兼容**：BREW_PREFIX 替代硬编码 `/opt/homebrew`
+- **whisper 模型路径兼容 Intel**
+
+### Dashboard
+- **NEXT_PUBLIC_EDITION=starter**：排除 dev 模块
+- **Dashboard token 不再被覆盖**
+- **Control UI auto-auth URL**
 
 ## [1.3.0] - 2026-03-10
 
