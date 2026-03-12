@@ -16,10 +16,6 @@ export PATH="/opt/homebrew/bin:$PATH"
 source ~/clawd/.claw_aliases
 
 # 1Password Service Account Token
-[ -f "$HOME/.op_config" ] && source "$HOME/.op_config"
-source ~/.config/openclaw/1password.env
-
-# OpenClaw: Auto-load 1Password Service Account
 if [ -f ~/.config/openclaw/1password.env ]; then
     source ~/.config/openclaw/1password.env
 fi
@@ -44,14 +40,6 @@ export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 export PATH=$ANDROID_HOME/emulator:$PATH
 export PATH=$ANDROID_HOME/platform-tools:$PATH
 export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
-# Google Workspace (gog)
-export GOG_KEYRING_BACKEND=file
-export GOG_KEYRING_PASSWORD=gogcli2026
-
-# IPBurger Static Proxy
-# OpenClaw incident fix (2026-02-15): keep proxy scoped to OpenClaw only
-# [ -f "$HOME/.config/proxy.env" ] && source "$HOME/.config/proxy.env"
 
 # OpenClaw Completion
 source "$HOME/.openclaw/completions/openclaw.zsh"

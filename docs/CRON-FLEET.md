@@ -6,42 +6,29 @@
 
 Cron Fleet 是 OpenClaw 的定时任务系统。每个 "job" 就是一个 prompt 模板，按设定频率自动触发 agent 执行。
 
-你的 AI 助手不只在你找它时才工作——它 7×24 在后台巡检、归档、监控、反思。
+你的 AI 助手不只在你找它时才工作——它 7×24 在后台巡检、归档、监控。
 
-## 内置 Cron Jobs
+## 推荐 Cron Jobs（7 个）
 
-Starter Kit 包含 **13 个通用 cron job**：
-
-### 🔴 核心（必须开启）
+### 🔴 核心
 
 | Job | 频率 | 做什么 |
 |-----|------|--------|
-| **auto-dispatch** | 4x/day | 主动发现问题 + 自动修复。三源扫描：cron 失败、LaunchAgent 异常、任务积压 |
-| **self-reflection** | 工作时间每 20min | 行为自省循环：回顾最近动作，识别模式问题，自动调整 |
+| **auto-dispatch** | 4x/day | 主动发现问题 + 自动修复：cron 失败、LaunchAgent 异常、任务积压 |
 | **cron-health-scanner** | 2x/day | Fleet 自身健康检查：连续失败检测、timeout 自动调整 |
 
 ### 🟡 日常
 
 | Job | 频率 | 做什么 |
 |-----|------|--------|
-| **morning-briefing** | 每天 08:10 | 晨报：昨日摘要 + 今日待办 + 关注的新闻/更新 |
+| **morning-briefing** | 每天 08:10 | 晨报：昨日摘要 + 今日待办 |
 | **daily-journal** | 每天 23:30 | 复盘日志：今天做了什么 → `memory/journal/YYYY-MM-DD.md` |
-| **daily-updates-check** | 每天 04:10 | 工具/依赖更新检查：OpenClaw、npm globals、Homebrew |
 | **daily-memory-archive** | 每天 01:10 | 记忆归档：将 session 中重要信息沉淀到 memory/ |
-| **daily-project-sync** | 每天 03:40 | 项目状态同步：git pull + 检查 CI |
-
-### 🟢 监控
-
-| Job | 频率 | 做什么 |
-|-----|------|--------|
-| **blog-monitor** | 4x/day | 博客/RSS 新文章监控（需配 blogwatcher） |
-| **cf-blog-scanner** | 4x/day | CloudFlare 博客扫描：技术更新追踪 |
 
 ### 🔵 周度
 
 | Job | 频率 | 做什么 |
 |-----|------|--------|
-| **weekly-system-evolution** | 周日 15:00 | 系统进化复盘：过去一周的改进 + 下周方向 |
 | **weekly-memory-maintenance** | 周日 05:10 | 记忆去重/清理：删除重复、合并相似 |
 
 ### ⚪ 维护
@@ -90,10 +77,6 @@ enabled: true
 
 你的 prompt 内容...
 ```
-
-### 共享上下文
-
-`_loop-discipline.md` 是所有 cron job 的共享前缀。它注入通用纪律规则，确保 cron job 遵循 The Loop 方法论。
 
 ## 监控
 

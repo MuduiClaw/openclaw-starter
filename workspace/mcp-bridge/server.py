@@ -54,23 +54,6 @@ READABLE_ROOTS = [
 
 # 允许代理执行的 CLI 工具白名单
 CLI_ALLOWLIST: dict[str, dict] = {
-    "gog": {
-        "bin": "gog",
-        "desc": "Google Workspace (Gmail, Calendar, Drive, Contacts, Sheets, Docs)",
-        "env": {"GOG_KEYRING_BACKEND": "file", "GOG_KEYRING_PASSWORD": "__YOUR_GOG_PASSWORD__"},
-    },
-    "bird": {
-        "bin": "bird",
-        "desc": "X (Twitter) read/write/search",
-    },
-    "blogwatcher": {
-        "bin": "blogwatcher",
-        "desc": "Blog/RSS monitor",
-    },
-    "himalaya": {
-        "bin": "himalaya",
-        "desc": "Email CLI (IMAP/SMTP)",
-    },
     "qmd": {
         "bin": "qmd",
         "desc": "Knowledge base semantic search/index",
@@ -363,9 +346,9 @@ async def web_fetch(url: str, max_chars: int = 8000) -> str:
 
 @mcp.tool(annotations={"title": "CLI Run", "readOnlyHint": False, "destructiveHint": False, "openWorldHint": True})
 async def cli_run(tool: str, args: str = "") -> str:
-    """执行白名单内的 CLI 工具。可用: gog, bird, blogwatcher, himalaya, qmd。
+    """执行白名单内的 CLI 工具。可用: qmd。
 
-    示例: tool="gog", args="mail list -n 5" | tool="bird", args="search 'AI agent'"
+    示例: tool="qmd", args="search 'AI agent'"
     """
     if tool not in CLI_ALLOWLIST:
         info = "\n".join(f"  {k}: {v['desc']}" for k, v in CLI_ALLOWLIST.items())
@@ -445,7 +428,7 @@ async def git_diff(repo: str = "", staged: bool = False) -> str:
 async def op_get(item: str, field: str = "password") -> str:
     """从 1Password 获取凭据。item 为条目名称或 ID，field 为字段名（默认 password）。
 
-    示例: item="Cloudflare API Token" | item="IPBurger" field="username"
+    示例: item="Cloudflare API Token" | item="GitHub Token" field="username"
     """
     env_extra = _load_op_env()
     result = _run(
