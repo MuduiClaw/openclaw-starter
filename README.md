@@ -1,6 +1,27 @@
-# 🦞 OpenClaw Starter Kit
+# OpenClaw
 
-> 经过真实场景验证的 AI 合伙人系统——10 分钟在你的 Mac 上跑起来。
+让 AI 从聊天框里走出来。
+
+装在你的 Mac 上，能发消息、写代码、管文件、自动干活——不只是陪你聊天。
+
+## 这是什么
+
+[OpenClaw](https://github.com/openclaw/openclaw) 是一个开源的 AI 助手平台——模型接入、消息收发、工具调用、定时任务，核心能力都有了。但装好之后，你面对的是一堆配置项和空白文件。
+
+这个项目是基于 OpenClaw 的**开箱即用方案**——我们把配置、工具、脚本、监控全部调通了，你只需要跑一行命令。
+
+> 如果 OpenClaw 是毛坯房，这里就是精装交付。
+
+| 你自己装 OpenClaw | Starter 帮你做好的 |
+|---|---|
+| 手动配 LLM、频道、工具 | 一行命令，交互式引导全搞定 |
+| AI 没有人格，每次对话从零开始 | 人格和记忆系统已设计好，拿来就用 |
+| 写了代码不知道对不对 | 19 层自动化门禁，AI 乱搞会被拦住 |
+| 不知道系统跑得怎么样 | 可视化监控面板，一眼看全 |
+| 想让 AI 写代码得自己接 | Codex + Claude Code + Gemini 开箱可用 |
+| AI 只在你找它时工作 | 定时任务，7×24 自动巡检、归档、监控 |
+| 进程挂了得自己发现 | 守护进程自动重启 |
+| 能力有限 | 23 个预装技能模块 |
 
 ## 快速开始
 
@@ -35,9 +56,9 @@ cd openclaw-starter
 | **The Loop** | 实战检验的 Agent 工作循环：想清楚 → 执行 → 验证 → 交付 → 复盘 |
 | **Coding Agents** | Codex + Claude Code + Gemini CLI 作为 AI 的执行团队 |
 | **23 个 Skills** | 设计、开发、研究、文档、测试、视频——模块化的 AI 能力 |
-| **Git 质量门禁** | [19 层自动化 Gate](docs/GATES.md)：commit 格式、scope 检查、spec 审查、TDD 强制、typecheck/eslint、tree-hash 防伪 |
+| **Git 质量门禁** | [19 层自动化 Gate](docs/GATES.md)：commit 格式、scope 检查、spec 审查、TDD 强制、typecheck/eslint |
 | **Cron 定时任务** | 内置调度引擎，按需配置自动化任务 |
-| **infra-dashboard** | 实时监控：服务状态、Settings 配置、工具版本、模型用量、Cron、Gate 健康 |
+| **infra-dashboard** | 实时监控：服务状态、配置、工具版本、模型用量、Cron、Gate 健康 |
 | **语音消息** | whisper.cpp 本地语音转文字，无需 API Key |
 | **记忆系统** | qmd 语义搜索，让 AI 记住上下文和决策 |
 | **可选 CLI 工具** | himalaya (邮件) · gog (Google) · bird (X/Twitter) · blogwatcher (RSS) |
