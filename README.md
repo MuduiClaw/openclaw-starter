@@ -160,6 +160,7 @@ openclaw-starter/
 | **[Cron Fleet](docs/CRON-FLEET.md)** | 定时任务使用指南 |
 | **[门禁系统](docs/GATES.md)** | 19 层自动化质量门禁：按 Loop 阶段组织，含触发统计 |
 | **[Skills](docs/SKILLS-GUIDE.md)** | Skills 扩展指南 |
+| **[工具深度指南](docs/guides/README.md)** | 12 篇实战指南：Codex、Claude Code、Discord、1Password、MCP 等 |
 | **[升级](docs/UPGRADE.md)** | 三层升级：OpenClaw / Dashboard / Starter |
 | **[排错](docs/TROUBLESHOOTING.md)** | 问题诊断与解决 |
 
