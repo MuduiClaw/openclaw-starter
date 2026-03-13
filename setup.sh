@@ -649,8 +649,10 @@ fi
 if ! $NO_TAILSCALE; then
   if ! command -v tailscale &>/dev/null; then
     # Ask user before installing Tailscale (requires sudo + browser auth)
-    printf "\n${BOLD}Tailscale${NC} 提供安全的远程访问（可从其他设备 SSH 到本机）。\n"
-    printf "需要免费账号，安装过程中会打开浏览器授权。\n"
+    printf "\n${BOLD}Tailscale${NC} — 免费的安全组网工具\n"
+    printf "  • 从手机/笔记本远程 SSH 到这台机器\n"
+    printf "  • MCP Bridge 远程控制（让 IDE 跨设备调用本机 AI 工具链）\n"
+    printf "  • 安装后需用浏览器登录授权（免费账号，支持 Google/GitHub 登录）\n"
     printf "是否安装 Tailscale？[y/N] "
     read -r TS_ANSWER </dev/tty 2>/dev/null || TS_ANSWER="n"
     if [[ ! "$TS_ANSWER" =~ ^[Yy] ]]; then
