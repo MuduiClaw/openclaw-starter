@@ -648,8 +648,18 @@ fi
 # --- Tailscale (remote access) ---
 if ! $NO_TAILSCALE; then
   if ! command -v tailscale &>/dev/null; then
-    info "Installing Tailscale (remote access)..."
-    brew install tailscale 2>/dev/null || warn "Tailscale install failed (non-critical)"
+    # Ask user before installing Tailscale (requires sudo + browser auth)
+    printf "\n${BOLD}Tailscale${NC} enables secure remote access to this machine.\n"
+    printf "It requires a free account and browser authorization.\n"
+    printf "Install Tailscale? [Y/n] "
+    read -r TS_ANSWER </dev/tty 2>/dev/null || TS_ANSWER="y"
+    if [[ "$TS_ANSWER" =~ ^[Nn] ]]; then
+      info "Tailscale skipped. You can install later: brew install tailscale && tailscale login"
+      NO_TAILSCALE=true
+    else
+      info "Installing Tailscale (remote access)..."
+      brew install tailscale 2>/dev/null || warn "Tailscale install failed (non-critical)"
+    fi
   fi
   if command -v tailscale &>/dev/null; then
     # Start Tailscale daemon — brew services often silently fails on macOS,
