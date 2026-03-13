@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OpenClaw MCP Bridge — 把 Mac mini 上 OpenClaw 的基建暴露给 Tailscale 内的 Antigravity IDE。
+OpenClaw MCP Bridge — 把 OpenClaw 主机的基建暴露给 Tailscale 内的 IDE。
 
 Tools:
   知识层: memory_search / memory_read / skill_list / skill_read
@@ -127,7 +127,7 @@ _ALLOWED_HOSTS = [
 mcp = FastMCP(
     "openclaw-bridge",
     instructions=(
-        "OpenClaw Bridge — Mac mini 基建桥接。\n\n"
+        "OpenClaw Bridge — OpenClaw 主机基建桥接。\n\n"
         "## ⚠️ 安全协议（强制）\n"
         "1. **绝不直接编辑 ~/.openclaw/openclaw.json** — 用 `openclaw config set` 或 gateway config.patch RPC\n"
         "2. **修复前必须诊断** — 先 `openclaw_diagnose` 查状态+日志+版本，理解问题后再动手\n"
@@ -360,7 +360,7 @@ async def cli_run(tool: str, args: str = "") -> str:
 
 @mcp.tool(annotations={"title": "Shell Exec", "readOnlyHint": False, "destructiveHint": True, "openWorldHint": True})
 async def shell_exec(command: str, cwd: str = "", timeout: int = 60) -> str:
-    """在 Mac mini 上执行 shell 命令。⚠️ 高风险工具，使用前请遵守：
+    """在 OpenClaw 主机上执行 shell 命令。⚠️ 高风险工具，使用前请遵守：
 
     **安全协议（强制）:**
     1. 修改 OpenClaw 配置 → 必须先调 openclaw_diagnose，禁止直接编辑 ~/.openclaw/openclaw.json
@@ -470,7 +470,7 @@ async def models_list(filter: str = "") -> str:
 
 @mcp.tool(annotations={"title": "System Info", "readOnlyHint": True, "openWorldHint": False})
 async def system_info() -> str:
-    """Mac mini 系统状态：负载、内存、磁盘、关键进程。"""
+    """主机系统状态：负载、内存、磁盘、关键进程。"""
     parts = [
         "=== uptime ===", _run("uptime", timeout=5),
         "\n=== memory ===", _run("vm_stat | head -10", timeout=5),
