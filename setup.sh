@@ -1393,9 +1393,9 @@ if ! $SKIP_DASHBOARD; then
     # Generate dashboard token if missing
     DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
     if [ ! -f "$DASHBOARD_ENV" ]; then
-      DASH_TOKEN="0000"
+      DASH_TOKEN=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
       (umask 077; echo "export DASHBOARD_TOKEN=${DASH_TOKEN}" > "$DASHBOARD_ENV")
-      success "Dashboard token generated"
+      success "Dashboard token generated (随机密码，见安装结束时的输出)"
     fi
 
     # Write dashboard config (controls which tools/modules are displayed)
@@ -1563,8 +1563,9 @@ with open('$GW_PLIST', 'wb') as f:
         echo "export OPENCLAW_GATEWAY_TOKEN=${GW_TOKEN}" >> "${DASHBOARD_ENV}.tmp"
         (umask 077; mv "${DASHBOARD_ENV}.tmp" "$DASHBOARD_ENV")
       else
+        DASH_TOKEN_FALLBACK=$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24)
         (umask 077; cat > "$DASHBOARD_ENV" <<ENVEOF
-export DASHBOARD_TOKEN=0000
+export DASHBOARD_TOKEN=${DASH_TOKEN_FALLBACK}
 export OPENCLAW_GATEWAY_TOKEN=${GW_TOKEN}
 ENVEOF
 )
@@ -1711,6 +1712,7 @@ if [ -d "${HOME}/projects/infra-dashboard" ]; then
     _DASH_T=$(grep DASHBOARD_TOKEN "$DASHBOARD_ENV" | sed 's/export DASHBOARD_TOKEN=//' | sed 's/DASHBOARD_TOKEN=//')
     printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001/?token=${_DASH_T}${NC}  ${DIM}(基建监控)${NC}\n"
     printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}\n"
+    printf "   ${BOLD}Dashboard 密码:${NC} ${CYAN}${_DASH_T}${NC}  ${DIM}(可在 ~/.config/openclaw/dashboard.env 修改)${NC}\n"
   else
     printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}  ${DIM}(基建监控)${NC}\n"
   fi
