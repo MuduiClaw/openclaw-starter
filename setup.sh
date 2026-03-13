@@ -907,8 +907,14 @@ mkdir -p "${WORKSPACE_DIR}/tasks"
 progress_done "Workspace → ${WORKSPACE_DIR}"
 
 # --- qmd-safe.sh wrapper ---
-NODE_BIN_QMD="$(dirname "$(command -v node 2>/dev/null || echo /usr/local/bin/node)")/qmd"
-QMD_PATH="$(command -v qmd 2>/dev/null || echo "$NODE_BIN_QMD")"
+# qmd is installed to ~/.local/bin/qmd via bun, which may not be in PATH yet
+QMD_PATH="$(command -v qmd 2>/dev/null || echo "")"
+if [[ -z "$QMD_PATH" ]] && [[ -x "${HOME}/.local/bin/qmd" ]]; then
+  QMD_PATH="${HOME}/.local/bin/qmd"
+fi
+if [[ -z "$QMD_PATH" ]]; then
+  QMD_PATH="$(dirname "$(command -v node 2>/dev/null || echo /usr/local/bin/node)")/qmd"
+fi
 cat > "${OPENCLAW_STATE}/scripts/qmd-safe.sh" << QMDEOF
 #!/bin/bash
 set -euo pipefail
