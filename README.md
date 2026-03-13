@@ -1,4 +1,4 @@
-# 🦞 OpenClaw
+# ClawKing 🦞 — OpenClaw 开箱即用精装版
 
 让 AI 从聊天框里走出来。
 
