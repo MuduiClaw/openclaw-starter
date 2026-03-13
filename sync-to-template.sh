@@ -43,7 +43,7 @@ if $DRY_RUN; then echo -e "${YELLOW}DRY RUN — no files will be written${NC}"; 
 echo ""
 
 # === WHITELIST: Files to sync ===
-# Format: source_relative_path → starter_relative_path
+# Format: source_relative_path → clawking_relative_path
 # Only these files get synced. Everything else is excluded.
 
 CHANGED=0

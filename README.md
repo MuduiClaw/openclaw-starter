@@ -12,7 +12,7 @@
 
 > 如果 OpenClaw 是毛坯房，这里就是精装交付。搬进去就能住。
 
-| 自己装 OpenClaw | 用 Starter |
+| 自己装 OpenClaw | 用 ClawKing |
 |---|---|
 | 手动配 LLM、频道、工具 | 一行命令，交互式引导全搞定 |
 | AI 没有人格，每次对话从零开始 | 人格和记忆系统已设计好，开口就有性格 |
@@ -252,7 +252,7 @@ ClawKing/
 | **[Cron Fleet](docs/CRON-FLEET.md)** | 定时任务使用指南 |
 | **[门禁系统](docs/GATES.md)** | 19 层自动化质量门禁 |
 | **[Skills](docs/SKILLS-GUIDE.md)** | Skills 扩展指南 |
-| **[升级](docs/UPGRADE.md)** | 三层升级：OpenClaw / Dashboard / Starter |
+| **[升级](docs/UPGRADE.md)** | 三层升级：OpenClaw / Dashboard / ClawKing |
 | **[排错](docs/TROUBLESHOOTING.md)** | 问题诊断与解决 |
 
 ### 外部链接

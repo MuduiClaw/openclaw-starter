@@ -13,7 +13,7 @@ set -uo pipefail
 # Everything else is fully automatic.
 # ============================================================================
 
-STARTER_VERSION="1.3.0"
+CLAWKING_VERSION="1.3.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -260,7 +260,7 @@ fi
 # ============================================================================
 printf "
 ${BOLD}🦞 ClawKing 🦞 v%s${NC}
-" "$STARTER_VERSION"
+" "$CLAWKING_VERSION"
 printf "${DIM}   Battle-tested AI partner setup for macOS${NC}
 
 "

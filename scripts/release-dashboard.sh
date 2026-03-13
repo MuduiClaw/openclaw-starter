@@ -27,7 +27,7 @@ fatal()   { printf "${RED}[release]${NC} %s
 " "$*"; exit 1; }
 
 DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
-STARTER_REPO="MuduiClaw/ClawKing"
+CLAWKING_REPO="MuduiClaw/ClawKing"
 TARBALL="/tmp/infra-dashboard-standalone.tar.gz"
 
 # Parse args
@@ -84,32 +84,32 @@ TARBALL_SIZE=$(du -sh "$TARBALL" | cut -f1)
 success "Tarball: ${TARBALL_SIZE} → ${TARBALL}"
 
 # --- Upload to GitHub Release ---
-info "Uploading to ${STARTER_REPO} release ${TAG}..."
+info "Uploading to ${CLAWKING_REPO} release ${TAG}..."
 
 # Delete existing release if same tag
-if gh release view "$TAG" --repo "$STARTER_REPO" &>/dev/null; then
+if gh release view "$TAG" --repo "$CLAWKING_REPO" &>/dev/null; then
   info "Deleting existing release ${TAG}..."
-  gh release delete "$TAG" --repo "$STARTER_REPO" --yes 2>/dev/null || true
+  gh release delete "$TAG" --repo "$CLAWKING_REPO" --yes 2>/dev/null || true
   # Also delete the git tag so we can recreate
-  gh api -X DELETE "repos/${STARTER_REPO}/git/refs/tags/${TAG}" 2>/dev/null || true
+  gh api -X DELETE "repos/${CLAWKING_REPO}/git/refs/tags/${TAG}" 2>/dev/null || true
 fi
 
 gh release create "$TAG" \
   "$TARBALL" \
-  --repo "$STARTER_REPO" \
+  --repo "$CLAWKING_REPO" \
   --title "infra-dashboard v${VERSION} (standalone)" \
   --notes "Pre-built infra-dashboard v${VERSION} standalone bundle.
 
-Download: \`curl -fsSL https://github.com/${STARTER_REPO}/releases/latest/download/infra-dashboard-standalone.tar.gz | tar xz -C ~/projects/infra-dashboard\`
+Download: \`curl -fsSL https://github.com/${CLAWKING_REPO}/releases/latest/download/infra-dashboard-standalone.tar.gz | tar xz -C ~/projects/infra-dashboard\`
 
 Run: \`cd ~/projects/infra-dashboard && node server.js\`"
 
-success "Released: https://github.com/${STARTER_REPO}/releases/tag/${TAG}"
+success "Released: https://github.com/${CLAWKING_REPO}/releases/tag/${TAG}"
 
 # --- Verify download URL ---
 info "Verifying download URL..."
 HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" \
-  "https://github.com/${STARTER_REPO}/releases/latest/download/infra-dashboard-standalone.tar.gz" 2>/dev/null || echo "000")
+  "https://github.com/${CLAWKING_REPO}/releases/latest/download/infra-dashboard-standalone.tar.gz" 2>/dev/null || echo "000")
 
 if [[ "$HTTP_CODE" == "200" ]]; then
   success "Download URL verified (HTTP 200)"
@@ -120,4 +120,4 @@ fi
 
 # Cleanup
 rm -f "$TARBALL"
-success "Done. infra-dashboard v${VERSION} published to ${STARTER_REPO} releases."
+success "Done. infra-dashboard v${VERSION} published to ${CLAWKING_REPO} releases."
