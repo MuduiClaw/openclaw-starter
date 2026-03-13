@@ -3,16 +3,111 @@
 ## [Unreleased]
 
 ### 新功能
-- **可选 CLI 工具自动安装**：himalaya (邮件)、gog (Google)、bird (X/Twitter)、blogwatcher (RSS)
-  - blogwatcher 自动装 Go + 编译 + 软链到 `/opt/homebrew/bin/` + `.zprofile` PATH
-  - 全部 non-critical，失败不阻塞安装
-- **项目级 Git 门禁** (`project-gates.sh`)：P1 Secrets 扫描 + P2 Privacy 拦截
-- **SPEC-TEMPLATE.md**：标准化 spec 模板，Gate 0.7 配套
-- **文档重构**：README 精简到 184 行 + 独立 `docs/SETUP-GUIDE.md` + `docs/FAQ.md`（30+ QA）
+- ACP auth guidance — setup.sh checks + README docs
+- add infra-audit.sh + brand-system skeleton (#7, #11)
+- ask user before installing Tailscale (interactive Y/n prompt)
+- sync gates telemetry alignment + add git-push-safe.sh
+- portable hooks + setup script + documentation
+- add release.sh automation + update CHANGELOG with post-1.3.1 changes
+- add optional CLI tools to setup.sh — himalaya, gog, bird, blogwatcher with auto-symlink and PATH setup
+- add project-gates.sh (secrets+privacy scan) + SPEC-TEMPLATE — align gates with infra-dashboard
+- add web/media/links/exec/plugins template + brave setup prompt
+- add git quality gates (shellcheck, scope-ack, conventional commits)
+- --update-dashboard command + dashboards tutorial in README
+- add Self-Reflection Loop cron prompt to starter
+- complete uninstall — clean up cron, dashboard, qmd, config
+- add release-dashboard.sh for automated dashboard publishing
+- distribute infra-dashboard via GitHub Release
+- clarify GitHub Token needed for infra-dashboard
+- add bootstrap.sh for fresh Mac install
 
-### 改进
-- 移除 Mac mini 专属 cron 模板（starter 出厂零 cron）
-- 移除预装个人 CLI 工具（改为可选安装段）
+### 修复
+- gateway self-kill protection — denyCommands + watchdog + safe-restart
+- qmd-safe.sh template — resolve ~/.local/bin/qmd first
+- qmd-safe.sh resolve ~/.local/bin/qmd when not in PATH
+- improve Tailscale prompt — explain why + free
+- Tailscale default to skip (y/N), not auto-install
+- Tailscale interactive prompt use Chinese
+- qmd shim points to wrong path (src/qmd.ts → src/cli/qmd.ts)
+- run tailscale login in background to prevent install deadlock
+- guard brew shellenv eval against set -u crash on fresh Mac
+- Revert "fix: generate random dashboard token instead of hardcoded 0000"
+- generate random dashboard token instead of hardcoded 0000
+- remove developer-specific references from workspace templates
+- security audit — 3 critical + 3 high + 4 medium
+- sync hooks with physicalize iteration — add Gate 2.1 + Gate 5, remove task-lock
+- whisper model path use BREW_PREFIX for Intel Mac compat
+- set feishu groupPolicy=open to prevent intermittent pairing prompts
+- add whisper-cpp local STT for voice message support
+- 补齐所有 gate 文件 + wrapper 安装 + hooks 路径去硬编码
+- Guardian 端口不再写死 18789，自动从配置读取
+- Guardian 默认自动重启，不再需要审批门禁
+- SSH 开启自动弹设置页面 + 轮询等待
+- SSH 启用改用 launchctl load -w
+- macOS SSH 开启兼容 Ventura+ FDA 限制
+- tailscale login 自动弹浏览器
+- add MiniMax VL-01 for image understanding in setup config
+- tailscale daemon 三级启动保障
+- require Node.js v25+ (was v24+)
+- build dashboard with NEXT_PUBLIC_EDITION=starter to exclude dev modules
+- use BREW_PREFIX for Intel Mac .zprofile brew shellenv path
+- dashboard token overwrite + Control UI auto-auth URL
+- sync gate scripts — derive REPO_ROOT from spec path, not cwd
+- clean skills for public use
+- native addon in standalone tarball + robust rebuild fallback
+- upgrade Node v24→v25, bun fallback, PATH auto-update, native addon rebuild
+- remove Self-Reflection Loop from starter
+- remove '工程' from default dashboard modules
+- address 2 remaining Oracle review gaps
+- address all 9 Oracle audit issues
+- generate gateway auth token + show dashboard login URL on setup
+- prevent git credential prompt blocking install
+- MiniMax 推荐理由改为「价格便宜」
+- crash on fresh Mac + channel config optional + confirm loop
+
+### 文档
+- 三道防线（自愈 + Claude 急救 + GitHub 备份）
+- 添加最佳模型搭配推荐 + 龙虾要养越用越香
+- README 标题改为 ClawKing 🦞 — OpenClaw 开箱即用精装版
+- 重写 README — 面向非技术用户，讲清楚和 OpenClaw 的关系
+- 重写 README — 用户视角，加毛坯房 vs 精装交付定位
+- README 添加工具深度指南入口
+- 工具深度指南 — 12 篇中文实战指南 + 第零篇入门
+- 替换截图为 viewport 尺寸（不再 fullPage）
+- 添加 dashboard/gates/tasks 截图到 GATES.md 和 README
+- GATES.md 全面重写 — 19 个门禁按 Loop 阶段 + telemetry + 辅助工具 + 任务看板
+- restructure README → concise landing + SETUP-GUIDE + FAQ
+- AGENTS.md 自动教训沉淀
+- update README for zero-cron starter (e5232a6)
+- sync README with today's changes
+- add MCP servers section to config template
+- add Control UI + Dashboard screenshots to README
+- remove jargon from README intro (battle-tested, Docker)
+- update README + CHANGELOG for v1.3.0 Oracle audit fixes
+- fix MiniMax description — key is user-provided, not built-in
+- add model + channel setup guides with official doc links
+- rewrite README for v1.3.0 — MiniMax default, Guardian, security, actual install flow
+
+### 测试
+- add git-push-safe.sh gate tests
+- add 20 tests for portable hooks, setup script, and docs
+- auto-generated tests (TDD gate remediation)
+- init bats test suite for TDD gate enforcement
+
+### 维护
+- purge remaining 'Starter' references → ClawKing
+- fix remaining 'starter kit' references in sync-to-template.sh
+- rename openclaw-starter → ClawKing 🦞
+- sync physicalize — 删 7 零触发脚本 + 加 spawn-agent.sh
+- remove personal CLI tools (bird/blogwatcher/himalaya/gog) from starter
+- remove Mac mini-specific cron prompts
+- mark v1.3.1-cleanup as done
+- v1.3.1 public release cleanup
+- add initial lessons.md + journal/.gitkeep for new installs
+- remove 7 personal cron prompts, keep 7 universal ones
+
+### 其他
+- docs+fix: Tailscale 完整说明 + SSH 开启交互引导
 
 ## [1.3.1] - 2026-03-11
 
