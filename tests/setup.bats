@@ -190,6 +190,17 @@ assert_script_not_matches() {
   assert_script_contains 'ln -sf "$GOPATH/bin/blogwatcher" /opt/homebrew/bin/blogwatcher'
 }
 
+@test "setup.sh runs tailscale login in background to avoid blocking" {
+  # tailscale login blocks until auth completes — must run in background
+  # so we can extract URL and open browser while it waits
+  assert_script_contains 'tailscale login > "$TS_LOGIN_TMP" 2>&1 &'
+  assert_script_contains 'TS_LOGIN_PID=$!'
+  assert_script_not_contains 'TS_LOGIN_OUT=$(tailscale login'
+  # Must clean up background process
+  assert_script_contains 'kill "$TS_LOGIN_PID"'
+  assert_script_contains 'rm -f "$TS_LOGIN_TMP"'
+}
+
 @test "setup.sh adds Go bin to .zprofile for blogwatcher" {
   assert_script_contains 'go/bin'
   assert_script_contains '.zprofile'
