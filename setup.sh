@@ -528,6 +528,37 @@ for pkg in "${NPM_GLOBALS[@]}"; do
   fi
 done
 
+# --- Coding Agent Auth Check ---
+# ACP requires at least one coding agent to be authenticated
+AGENT_AUTHED=false
+if command -v claude &>/dev/null; then
+  if claude auth status 2>/dev/null | grep -q '"loggedIn": true'; then
+    AGENT_AUTHED=true
+    progress_done "Claude Code (已认证)"
+  fi
+fi
+if command -v codex &>/dev/null; then
+  # Codex stores auth in ~/.codex/ — check if token file exists
+  if [ -f "$HOME/.codex/auth.json" ] || [ -f "$HOME/.config/codex/auth.json" ]; then
+    AGENT_AUTHED=true
+    progress_done "Codex (已认证)"
+  fi
+fi
+
+if ! $AGENT_AUTHED; then
+  echo ""
+  warn "⚠️  Coding Agent 未认证"
+  info "ACP 功能需要至少一个 coding agent 登录："
+  printf "   ${CYAN}Codex:${NC}       运行 ${BOLD}codex${NC}（首次启动会自动打开浏览器登录）
+"
+  printf "   ${CYAN}Claude Code:${NC} 运行 ${BOLD}claude${NC}（首次启动选择登录方式）
+"
+  printf "   ${CYAN}Gemini CLI:${NC}  运行 ${BOLD}gemini${NC}（首次启动通过 Google OAuth 登录）
+"
+  info "安装完成后可随时登录，ACP 功能将自动启用"
+  echo ""
+fi
+
 # --- Playwright Chromium ---
 if ! npx playwright install --dry-run chromium &>/dev/null 2>&1; then
   info "Installing Playwright Chromium..."

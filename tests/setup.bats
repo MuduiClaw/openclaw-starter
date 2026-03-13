@@ -218,3 +218,15 @@ assert_script_not_matches() {
   [[ "$output" == *"--version"* ]]
   [[ "$output" == *"--dry-run"* ]]
 }
+
+@test "setup.sh includes coding agent auth check" {
+  assert_script_contains "Coding Agent Auth Check"
+  assert_script_contains "claude auth status"
+  assert_script_contains "AGENT_AUTHED"
+}
+
+@test "setup.sh shows auth guidance when no agent is authenticated" {
+  assert_script_contains "Coding Agent 未认证"
+  assert_script_contains "codex"
+  assert_script_contains "claude"
+}
