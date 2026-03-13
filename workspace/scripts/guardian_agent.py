@@ -183,14 +183,15 @@ def run_cmd(cmd, timeout=30, cwd=None):
 
 
 def kill_port_zombies(port=None):
+    """清理端口占用的 LISTEN 残留进程（防止旧进程影响重启）。
+    仅匹配 TCP LISTEN 状态，避免误杀连接到该端口的客户端进程。"""
     if port is None: port = GATEWAY_PORT
-    """清理端口占用残留进程（防止旧进程影响重启）"""
-    rc, port_pids, _ = run_cmd(f"/usr/sbin/lsof -ti :{port}", timeout=5)
+    rc, port_pids, _ = run_cmd(f"/usr/sbin/lsof -tiTCP:{port} -sTCP:LISTEN", timeout=5)
     if rc == 0 and port_pids.strip():
         for pid in port_pids.strip().split("\n"):
             pid = pid.strip()
             if pid:
-                log.info(f"清理端口{port}残留进程 PID={pid}")
+                log.info(f"清理端口{port} LISTEN 残留进程 PID={pid}")
                 run_cmd(f"kill -9 {pid}", timeout=5)
         time.sleep(2)
 
@@ -469,6 +470,32 @@ class HealthChecker:
         time.sleep(3)
         return self._is_service_loaded()
 
+    def _kill_zombie_gateway(self):
+        """kickstart 前清理僵尸 Gateway 进程，防止 launchd 卡在旧进程上。
+        注意：不调用 kill_port_zombies()，避免 KeepAlive 竞争条件
+        （SIGKILL → launchd 自动拉起新进程 → kill_port_zombies 误杀新进程）。
+        kickstart -k 本身会处理运行中的进程，这里只需确保僵尸被清掉。"""
+        uid = os.getuid()
+        rc, _, _ = run_cmd(
+            f"launchctl kill SIGKILL gui/{uid}/{LAUNCHD_LABEL}",
+            timeout=10
+        )
+        if rc == 0:
+            log.info("Layer 1: launchctl kill SIGKILL 已发送")
+            # 轮询等待端口释放，最多 5 秒，不盲等
+            for i in range(10):
+                time.sleep(0.5)
+                rc_check, stdout, _ = run_cmd(
+                    f"/usr/sbin/lsof -tiTCP:{GATEWAY_PORT} -sTCP:LISTEN",
+                    timeout=5
+                )
+                if rc_check != 0 or not stdout.strip():
+                    log.info("Layer 1: 端口 %d 已释放 (%.1fs)", GATEWAY_PORT, (i + 1) * 0.5)
+                    return
+            log.warning("Layer 1: 端口 %d 在 5s 后仍被占用，继续 kickstart", GATEWAY_PORT)
+        else:
+            log.info("Layer 1: launchctl kill 返回 rc=%d（服务可能已停止），跳过等待", rc)
+
     def simple_restart(self):
         """Layer 1 简单重启 — 默认自动重启，审批模式可选"""
         log.info("Layer 1: 提交重启请求")
@@ -477,8 +504,9 @@ class HealthChecker:
         self._ensure_service_installed()
 
         if not REQUIRE_APPROVAL:
-            # 自动重启模式：直接 kickstart，不走审批
-            log.info("Layer 1: 自动重启模式 — 直接 kickstart Gateway")
+            # 自动重启模式：先清僵尸，再 kickstart
+            log.info("Layer 1: 自动重启模式 — 清理僵尸进程后 kickstart Gateway")
+            self._kill_zombie_gateway()
             uid = os.getuid()
             rc, stdout, stderr = run_cmd(
                 f"launchctl kickstart -k gui/{uid}/{LAUNCHD_LABEL}",
@@ -553,8 +581,9 @@ class HealthChecker:
 # ============================================================
 
 class RollbackManager:
-    def __init__(self, cooldown):
+    def __init__(self, cooldown, health=None):
         self.cooldown = cooldown
+        self.health = health
 
     def rollback(self):
         """按优先级尝试所有回滚策略"""
@@ -670,7 +699,11 @@ class RollbackManager:
     def _restart_and_verify(self):
         """Layer 3 重启 — 默认自动，审批模式可选"""
         if not REQUIRE_APPROVAL:
-            log.info("Layer 3: 自动重启模式 — 直接 kickstart Gateway")
+            log.info("Layer 3: 自动重启模式 — 清理僵尸进程后 kickstart Gateway")
+            if self.health:
+                self.health._kill_zombie_gateway()
+            else:
+                kill_port_zombies()
             uid = os.getuid()
             rc, stdout, stderr = run_cmd(
                 f"launchctl kickstart -k gui/{uid}/{LAUNCHD_LABEL}",
@@ -697,7 +730,7 @@ class RollbackManager:
 
 class Notifier:
     def notify_channel(self, message):
-        """Send alert to configured alerts channel"""
+        """发送到 #clawd-日志"""
         return self._send_message(DISCORD_LOG_CHANNEL, message[:2000])
 
     def notify_dm(self, message):
@@ -756,7 +789,7 @@ class GuardianAgent:
         self.state = load_state()
         self.cooldown = CooldownManager(self.state)
         self.health = HealthChecker()
-        self.rollback = RollbackManager(self.cooldown)
+        self.rollback = RollbackManager(self.cooldown, health=self.health)
         self.notifier = Notifier()
         self.consecutive_failures = self.state.get("consecutive_failures", 0)
         self.last_healthy = self.state.get("last_healthy", None)
@@ -847,7 +880,8 @@ class GuardianAgent:
             # doctor 后重启
             self.health._ensure_service_installed()
             if not REQUIRE_APPROVAL:
-                log.info("Layer 1.5: 自动重启模式 — 直接 kickstart Gateway")
+                log.info("Layer 1.5: 自动重启模式 — 清理僵尸进程后 kickstart Gateway")
+                self.health._kill_zombie_gateway()
                 uid = os.getuid()
                 rc_restart, _, _ = run_cmd(
                     f"launchctl kickstart -k gui/{uid}/{LAUNCHD_LABEL}",
@@ -935,7 +969,7 @@ class GuardianAgent:
         self.notifier.notify_channel(msg[:2000])
         self.notifier.notify_dm(
             f"OpenClaw Gateway 自动修复全部失败，已停机{self.consecutive_failures}轮。"
-            f"请查看 alerts 频道。"
+            f"请查看 #clawd-日志。"
         )
 
     def _save(self):
