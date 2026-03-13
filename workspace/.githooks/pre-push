@@ -59,7 +59,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       else
         echo "  ❌ Bad commit format: $msg"
         echo "     Expected: type[(scope)]: description"
-        _tel ci-commit-format block
+        _tel hook-commit-format block
         failed=1
       fi
     fi
@@ -102,6 +102,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # v2: verifies tree-hash anti-forgery (2026-03-12, gates-hardening-v2)
   # Skip for workspace repos — cron/subagent commits don't go through pre-commit
   if [[ $WORKSPACE_MODE -eq 0 ]]; then
+  g3_failed=0
   while IFS= read -r sha; do
     msg=$(git log -1 --format='%B' "$sha")
     # Skip merge commits and backup/journal
@@ -114,12 +115,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     if [[ -z "$trailer_val" ]]; then
       echo "  ❌ Commit ${sha:0:8} missing Pre-commit-gate trailer (hooks bypassed?)"
       _tel hook-tree-hash block
+      g3_failed=1
       failed=1
     elif [[ "$trailer_val" == "passed" ]]; then
       # Legacy plain-text trailer — reject (potential forgery or pre-v2 commit)
       echo "  ❌ Commit ${sha:0:8} has legacy 'passed' trailer (v2 requires tree-hash)"
       echo "     Amend the commit to regenerate: git commit --amend --no-edit"
       _tel hook-tree-hash block
+      g3_failed=1
       failed=1
     else
       # Verify tree-hash matches
@@ -128,10 +131,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         echo "  ❌ Commit ${sha:0:8} tree-hash mismatch (trailer: ${trailer_val:0:8}… actual: ${actual_tree:0:8}…)"
         echo "     Trailer was forged or commit was modified after hook. Amend to fix."
         _tel hook-tree-hash block
+        g3_failed=1
         failed=1
       fi
     fi
   done < <(git rev-list "$range" 2>/dev/null || true)
+  if [[ $g3_failed -eq 0 ]]; then
+    _tel hook-tree-hash pass
+  fi
   fi  # end WORKSPACE_MODE gate 3 skip
 
   # Gate 4: Cumulative TDD enforcement — push must include tests if it includes code
@@ -179,11 +186,15 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       echo "     Fix: add tests, or use: bash scripts/git-push-safe.sh"
       # Write file list for auto-remediation
       echo -e "$g4_code_list" | sed 's/^[[:space:]]*//' | grep -v '^$' > /tmp/.tdd-gate4-files 2>/dev/null || true
-      _tel script-tdd-verify-diff block
+      _tel hook-tdd block
       failed=1
     else
       echo "  ⚠️  [Gate 4 TDD] Code changes without tests (no test framework detected — warning only)"
     fi
+  fi
+
+  if [[ $g4_has_code -eq 1 && $g4_has_tests -eq 1 ]]; then
+    _tel hook-tdd pass
   fi
 
   # Gate 5: Lint/typecheck — auto-run if project has config (skip workspace repos)
@@ -200,6 +211,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         # Use npx tsc --noEmit with 30s timeout (perl for macOS portability)
         if g5_output=$(cd "$repo_root" && perl -e 'alarm 30; exec @ARGV' -- npx tsc --noEmit 2>&1); then
           echo "  ✅ [Gate 5] Typecheck passed"
+          _tel hook-typecheck pass
         else
           g5_exit=$?
           if [[ $g5_exit -eq 142 ]]; then
@@ -227,6 +239,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
           echo "  ⏳ [Gate 5] Running eslint..."
           if g5_output=$(cd "$repo_root" && perl -e 'alarm 30; exec @ARGV' -- npx eslint --no-warn-ignored $(git diff --name-only "$range" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | tr '\n' ' ') 2>&1); then
             echo "  ✅ [Gate 5] ESLint passed"
+            _tel hook-eslint pass
           else
             g5_exit=$?
             if [[ $g5_exit -eq 142 ]]; then

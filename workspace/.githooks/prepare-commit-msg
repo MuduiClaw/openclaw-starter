@@ -72,6 +72,8 @@ if [[ $prompt_changed -eq 1 && $changelog_changed -eq 0 ]]; then
   echo "  格式: - [YYYY-MM-DD] <job-slug> <version> — <变更摘要>"
   _tel hook-changelog block
   exit 1
+elif [[ $prompt_changed -eq 1 && $changelog_changed -eq 1 ]]; then
+  _tel hook-changelog pass
 fi
 
 # ============================================================
@@ -90,6 +92,7 @@ if [[ $staged_count -gt 5 ]]; then
   case "$commit_msg_line" in
     backup:*|journal:*|spec:*)
       echo "  ⏭  Auto-commit ($commit_msg_line), scope check skipped"
+      _tel hook-scope-lock pass
       ;;
     *)
       if ! echo "$commit_msg_line" | grep -q '\[scope-ack\]'; then
@@ -241,24 +244,33 @@ failed=0
 # Gate 1: shellcheck on staged .sh files
 if [[ ${#staged_sh[@]} -gt 0 ]] && command -v shellcheck &>/dev/null; then
   echo "🔍 Pre-commit gate: shellcheck (${#staged_sh[@]} files)..."
+  shellcheck_failed=0
   for f in "${staged_sh[@]}"; do
     if [[ -f "$f" ]] && ! shellcheck -S warning "$f" 2>&1; then
       if [[ $WORKSPACE_MODE -eq 1 ]]; then
         echo "   ⚠️  $f (workspace: warn only)"
       else
         echo "   ❌ $f"
+        shellcheck_failed=1
         failed=1
       fi
     fi
   done
+  if [[ $shellcheck_failed -eq 1 ]]; then
+    _tel hook-shellcheck block
+  else
+    _tel hook-shellcheck pass
+  fi
 fi
 
 # Gate 2: JSON syntax on staged .json files
+json_yaml_failed=0
 if [[ ${#staged_json[@]} -gt 0 ]]; then
   echo "🔍 Pre-commit gate: JSON syntax (${#staged_json[@]} files)..."
   for f in "${staged_json[@]}"; do
     if [[ -f "$f" ]] && ! python3 -m json.tool "$f" >/dev/null 2>&1; then
       echo "   ❌ Invalid JSON: $f"
+      json_yaml_failed=1
       failed=1
     fi
   done
@@ -270,9 +282,18 @@ if [[ ${#staged_yml[@]} -gt 0 ]]; then
   for f in "${staged_yml[@]}"; do
     if [[ -f "$f" ]] && ! python3 -c "import yaml, sys; yaml.safe_load(open(sys.argv[1]))" "$f" 2>&1; then
       echo "   ❌ Invalid YAML: $f"
+      json_yaml_failed=1
       failed=1
     fi
   done
+fi
+
+if [[ ${#staged_json[@]} -gt 0 || ${#staged_yml[@]} -gt 0 ]]; then
+  if [[ $json_yaml_failed -eq 1 ]]; then
+    _tel hook-json-yaml block
+  else
+    _tel hook-json-yaml pass
+  fi
 fi
 
 # Gate 4: Prompt CHANGELOG — prompt files changed → CHANGELOG must be staged too
