@@ -651,9 +651,9 @@ if ! $NO_TAILSCALE; then
     # Ask user before installing Tailscale (requires sudo + browser auth)
     printf "\n${BOLD}Tailscale${NC} 提供安全的远程访问（可从其他设备 SSH 到本机）。\n"
     printf "需要免费账号，安装过程中会打开浏览器授权。\n"
-    printf "是否安装 Tailscale？[Y/n] "
-    read -r TS_ANSWER </dev/tty 2>/dev/null || TS_ANSWER="y"
-    if [[ "$TS_ANSWER" =~ ^[Nn] ]]; then
+    printf "是否安装 Tailscale？[y/N] "
+    read -r TS_ANSWER </dev/tty 2>/dev/null || TS_ANSWER="n"
+    if [[ ! "$TS_ANSWER" =~ ^[Yy] ]]; then
       info "已跳过 Tailscale。后续可手动安装: brew install tailscale && tailscale login"
       NO_TAILSCALE=true
     else
