@@ -96,6 +96,16 @@ assert_script_not_matches() {
   assert_script_contains 'eval "\$(${BREW_PREFIX}/bin/brew shellenv)" 2>/dev/null'
 }
 
+@test "setup.sh guards brew shellenv eval with set +u for fresh Mac compatibility" {
+  # New Homebrew versions output nested eval + path_helper in shellenv
+  # which can trigger unbound variable errors with set -u on fresh Macs
+  assert_script_contains 'set +u'
+  assert_script_contains 'eval "$("${BREW_PREFIX}/bin/brew" shellenv)" 2>/dev/null || true'
+  assert_script_contains 'set -u'
+  # Fallback: manual PATH addition if brew binary exists but shellenv fails
+  assert_script_contains 'export PATH="${BREW_PREFIX}/bin:${BREW_PREFIX}/sbin:${PATH}"'
+}
+
 @test "setup.sh protects user files during workspace deployment" {
   assert_script_contains 'SYSTEM_DIRS=("scripts" "prompts" "eval" "skills" "mcp-bridge")'
   assert_script_contains 'cp -a "$dst" "$backup"'

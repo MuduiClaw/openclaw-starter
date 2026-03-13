@@ -380,10 +380,23 @@ fi
 # --- Homebrew ---
 if ! command -v brew &>/dev/null; then
   info "Installing Homebrew..."
-  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
   # Ensure brew is on PATH for this session
-  eval "$("${BREW_PREFIX}/bin/brew" shellenv)"
-  success "Homebrew"
+  # (eval in a set +u subshell — brew shellenv may reference unset vars on fresh Mac)
+  if [[ -x "${BREW_PREFIX}/bin/brew" ]]; then
+    set +u
+    eval "$("${BREW_PREFIX}/bin/brew" shellenv)" 2>/dev/null || true
+    set -u
+    success "Homebrew"
+  else
+    # Homebrew binary not found — try adding to PATH manually
+    export PATH="${BREW_PREFIX}/bin:${BREW_PREFIX}/sbin:${PATH}"
+    if command -v brew &>/dev/null; then
+      success "Homebrew (manual PATH)"
+    else
+      fatal "Homebrew installation failed — brew not found at ${BREW_PREFIX}/bin/brew"
+    fi
+  fi
 else
   progress_done "Homebrew"
 fi
