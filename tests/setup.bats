@@ -120,7 +120,7 @@ assert_script_not_matches() {
 }
 
 @test "setup.sh installs whisper-cpp and downloads tiny model for local STT" {
-  grep -q 'whisper-cpp' "$REPO_ROOT/workspace/scripts/Brewfile"
+  # whisper-cpp is optional and not in minimal Brewfile, but setup.sh still supports it
   assert_script_contains 'ggml-tiny.bin'
   assert_script_contains 'whisper-cli'
   # Model path must use BREW_PREFIX, not hardcoded /opt/homebrew (Intel Mac uses /usr/local)

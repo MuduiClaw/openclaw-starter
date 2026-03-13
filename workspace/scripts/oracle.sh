@@ -14,15 +14,17 @@ if ! command -v oracle &> /dev/null; then
   exit 1
 fi
 
-CONFIG_FILE="$HOME/.config/md2wechat/config.yaml"
-if [[ -f "$CONFIG_FILE" ]]; then
-  GEMINI_KEY=$(sed -n 's/^[[:space:]]*gemini_key:[[:space:]]*"\{0,1\}\([^"[:space:]#]*\)"\{0,1\}.*$/\1/p' "$CONFIG_FILE")
-else
-  GEMINI_KEY=""
+# Priority: GEMINI_API_KEY env var > config file > error
+GEMINI_KEY="${GEMINI_API_KEY:-}"
+if [[ -z "$GEMINI_KEY" ]]; then
+  CONFIG_FILE="$HOME/.config/md2wechat/config.yaml"
+  if [[ -f "$CONFIG_FILE" ]]; then
+    GEMINI_KEY=$(sed -n 's/^[[:space:]]*gemini_key:[[:space:]]*"\{0,1\}\([^"[:space:]#]*\)"\{0,1\}.*$/\1/p' "$CONFIG_FILE")
+  fi
 fi
 
 if [[ -z "$GEMINI_KEY" ]]; then
-  echo "❌ Gemini API key not found in $CONFIG_FILE" >&2
+  echo "❌ Gemini API key not found. Set GEMINI_API_KEY env var or configure ~/.config/md2wechat/config.yaml" >&2
   exit 1
 fi
 

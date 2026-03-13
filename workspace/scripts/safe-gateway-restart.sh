@@ -22,7 +22,8 @@ set -euo pipefail
 
 # ─── Config ───
 LAUNCHD_LABEL="ai.openclaw.gateway"
-GATEWAY_PORT=18789
+# Dynamic port from config, fallback 3456
+GATEWAY_PORT=$(python3 -c "import json; print(json.load(open('$HOME/.openclaw/openclaw.json')).get('gateway',{}).get('port',3456))" 2>/dev/null || echo 3456)
 HEALTH_URL="http://127.0.0.1:${GATEWAY_PORT}/healthz"
 AUDIT_LOG="${HOME}/.openclaw/logs/gateway-audit.log"
 REQUEST_FILE="${HOME}/.openclaw/state/gateway-restart-request.json"

@@ -1,28 +1,17 @@
-tap "charmbracelet/tap"
-brew "cliclick"
-brew "cloudflared"
-brew "ffmpeg"
-brew "gh"
-brew "git-filter-repo"
-brew "go"
-brew "imagemagick"
-brew "node@22"
-brew "node@24"
-brew "optipng"
-brew "pandoc"
-brew "pango"
-brew "pngquant"
-brew "python@3.11"
-brew "rclone"
-brew "ripgrep"
-brew "shellcheck"
-brew "tailscale"
-brew "tmux"
-brew "wget"
-brew "whisper-cpp"
-brew "yt-dlp"
-brew "charmbracelet/tap/freeze"
-cask "1password-cli"
-cask "android-commandlinetools"
-cask "antigravity"
-cask "temurin"
+# OpenClaw Starter Kit — Minimal Brewfile
+# Core dependencies for OpenClaw workspace
+
+brew "gh"               # GitHub CLI
+brew "ripgrep"          # Fast code search
+brew "shellcheck"       # Shell script linter
+brew "ffmpeg"           # Media processing (video-frames skill)
+brew "imagemagick"      # Image manipulation
+brew "pandoc"           # Document conversion
+brew "tmux"             # Terminal multiplexer (tmux skill)
+brew "wget"             # HTTP fetcher
+
+# Optional — uncomment as needed
+# brew "tailscale"      # Remote access (VPN mesh)
+# brew "cloudflared"    # Cloudflare tunnel
+# brew "rclone"         # Cloud storage sync
+# cask "1password-cli"  # 1Password integration

@@ -6,10 +6,13 @@
 
 REAL_OPENCLAW="/opt/homebrew/bin/openclaw"
 
+# Dynamic port: read from config, fallback 3456
+_GW_PORT=$(python3 -c "import json; print(json.load(open('$HOME/.openclaw/openclaw.json')).get('gateway',{}).get('port',3456))" 2>/dev/null || echo 3456)
+
 # ─── Gate 1: Self-destruct prevention ───
 # Block gateway stop/restart/install when called from within gateway process tree
 if [[ "$1" == "gateway" ]] && [[ "${2:-}" =~ ^(install|stop|restart)$ ]]; then
-    gw_pid=$(/usr/sbin/lsof -i :18789 -sTCP:LISTEN -t 2>/dev/null | head -1)
+    gw_pid=$(/usr/sbin/lsof -i ":${_GW_PORT}" -sTCP:LISTEN -t 2>/dev/null | head -1)
     if [ -n "$gw_pid" ]; then
         p=$$
         while [ "$p" -gt 1 ] 2>/dev/null; do

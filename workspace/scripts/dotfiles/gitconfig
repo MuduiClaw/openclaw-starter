@@ -6,6 +6,6 @@
 	helper = !/opt/homebrew/bin/gh auth git-credential
 [user]
 	name = YOUR_USERNAME
-	email = hxrYOUR_USERNAME@gmail.com
+	email = your-email@example.com
 [core]
 	hooksPath = $HOME/clawd/.githooks

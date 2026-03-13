@@ -119,7 +119,10 @@ LAUNCHD_LABEL="ai.openclaw.gateway"
 
 safe_gateway_restart() {
   local zombie_pids
-  zombie_pids=$(/usr/sbin/lsof -ti :18789 2>/dev/null || true)
+  # Dynamic port from config
+  local gw_port
+  gw_port=$(python3 -c "import json; print(json.load(open('$HOME/.openclaw/openclaw.json')).get('gateway',{}).get('port',3456))" 2>/dev/null || echo 3456)
+  zombie_pids=$(/usr/sbin/lsof -ti :"$gw_port" 2>/dev/null || true)
   if [[ -n "$zombie_pids" ]]; then
     warn "Killing stale gateway pids: $zombie_pids"
     echo "$zombie_pids" | xargs kill -9 2>/dev/null || true

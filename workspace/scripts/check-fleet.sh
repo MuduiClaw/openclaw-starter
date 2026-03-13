@@ -15,7 +15,10 @@ now_local=$(TZ=Asia/Shanghai date +"%Y-%m-%d %H:%M:%S %Z")
 now_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 host=$(hostname)
 
-health_code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18789/health || echo "down")
+# Dynamic port: read from config, fallback 3456
+GATEWAY_PORT=$(python3 -c "import json; print(json.load(open('$HOME/.openclaw/openclaw.json')).get('gateway',{}).get('port',3456))" 2>/dev/null || echo 3456)
+
+health_code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${GATEWAY_PORT}/health" || echo "down")
 
 disk_used_raw=$(df -h "$DISK_PATH" 2>/dev/null | awk 'NR==2{print $5}')
 disk_used_pct=${disk_used_raw%%%}

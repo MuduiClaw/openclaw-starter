@@ -16,9 +16,13 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG"; }
 
 alert() {
     log "⚠️ ALERT: $1"
-    if command -v openclaw &>/dev/null; then
-        openclaw message send --channel discord --target "channel:1468294832551362782" \
+    # Send alert to Discord if channel is configured
+    local alert_channel="${OPENCLAW_ALERT_CHANNEL:-}"
+    if [[ -n "$alert_channel" ]] && command -v openclaw &>/dev/null; then
+        openclaw message send --channel discord --target "$alert_channel" \
             --message "⚠️ **备份失败**: $1" 2>/dev/null &
+    elif [[ -z "$alert_channel" ]]; then
+        log "⚠️ OPENCLAW_ALERT_CHANNEL not set, Discord alert skipped"
     fi
 }
 
@@ -147,34 +151,44 @@ _sync_recovery_assets() {
 _sync_recovery_assets
 
 backup_repo "$REAL_HOME/.openclaw" "openclaw-config" "$OPENCLAW_CONFIG_BRANCH"
-backup_repo "$REAL_HOME/.agents" "agents-skills" "main"
 backup_repo "$REAL_HOME/clawd" "clawd-workspace" "$CLAWD_WORKSPACE_BRANCH"
 
-# === R2 Daily Backups (sessions + assets) ===
+# Optional: backup agents-skills if it exists as a separate repo
+if [ -d "$REAL_HOME/.agents/.git" ]; then
+    backup_repo "$REAL_HOME/.agents" "agents-skills" "main"
+fi
+
+# === R2 Daily Backups (optional — only if scripts exist) ===
+R2_SESSIONS_SCRIPT="$REAL_HOME/clawd/scripts/r2_backup_sessions.sh"
+R2_ASSETS_SCRIPT="$REAL_HOME/clawd/scripts/r2_backup_assets.sh"
 R2_MARKER="/tmp/r2_backup_done_$(date '+%Y-%m-%d')"
-if [ ! -f "$R2_MARKER" ]; then
+if [ ! -f "$R2_MARKER" ] && { [ -f "$R2_SESSIONS_SCRIPT" ] || [ -f "$R2_ASSETS_SCRIPT" ]; }; then
     log "Running daily R2 backups..."
     R2_OK=true
     
-    if bash "$REAL_HOME/clawd/scripts/r2_backup_sessions.sh"; then
-        log "✅ R2 sessions backup complete"
-    else
-        log "❌ R2 sessions backup failed"
-        R2_OK=false
+    if [ -f "$R2_SESSIONS_SCRIPT" ]; then
+        if bash "$R2_SESSIONS_SCRIPT"; then
+            log "✅ R2 sessions backup complete"
+        else
+            log "❌ R2 sessions backup failed"
+            R2_OK=false
+        fi
     fi
     
-    if bash "$REAL_HOME/clawd/scripts/r2_backup_assets.sh"; then
-        log "✅ R2 assets backup complete"
-    else
-        log "❌ R2 assets backup failed"
-        R2_OK=false
+    if [ -f "$R2_ASSETS_SCRIPT" ]; then
+        if bash "$R2_ASSETS_SCRIPT"; then
+            log "✅ R2 assets backup complete"
+        else
+            log "❌ R2 assets backup failed"
+            R2_OK=false
+        fi
     fi
     
     if $R2_OK; then
         touch "$R2_MARKER"
     fi
 else
-    log "R2 daily backups already done today, skipping"
+    log "R2 daily backups: skipped (already done today or scripts not found)"
 fi
 
 log "========== 备份结束 =========="

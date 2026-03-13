@@ -46,6 +46,8 @@ fatal()   { error "$*"; exit 1; }
 step()    { printf "\n${BOLD}${CYAN}[%s]${NC} ${BOLD}%s${NC}\n" "$1" "$2"; }
 ask()     { printf "${BOLD}     %s${NC} " "$1"; }
 
+section() { printf "\n${BOLD}${CYAN}━━━ %s ━━━${NC}\n\n" "$*"; }
+
 progress_done() {
   printf "${GREEN}     %-30s ✓${NC}\n" "$1"
 }
@@ -423,9 +425,14 @@ fi
 # --- uv (Python package manager) ---
 if ! command -v uv &>/dev/null; then
   info "Installing uv (Python package manager)..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null
-  export PATH="$HOME/.local/bin:$PATH"
-  success "uv"
+  if brew install uv 2>/dev/null; then
+    success "uv (via Homebrew)"
+  elif curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null; then
+    export PATH="$HOME/.local/bin:$PATH"
+    success "uv (via installer)"
+  else
+    warn "uv install failed (non-critical)"
+  fi
 else
   progress_done "uv"
 fi
@@ -899,7 +906,7 @@ if [ -d "$DOTFILES_DIR" ]; then
   fi
 
   # OpenClaw CLI wrapper (self-destruct protection + config preflight)
-  WRAPPER_SRC="${SCRIPTS_DIR}/dotfiles/openclaw-wrapper"
+  WRAPPER_SRC="${SCRIPT_DIR}/scripts/dotfiles/openclaw-wrapper"
   WRAPPER_DST="${HOME}/.local/bin/openclaw"
   if [ -f "$WRAPPER_SRC" ]; then
     mkdir -p "${HOME}/.local/bin"

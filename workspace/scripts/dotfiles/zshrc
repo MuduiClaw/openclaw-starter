@@ -13,7 +13,8 @@ export GITHUB_TOKEN="<REDACTED>"
 export GITHUB_PERSONAL_ACCESS_TOKEN="<REDACTED>"
 export PATH="/opt/homebrew/bin:$PATH"
 
-source ~/clawd/.claw_aliases
+# Custom aliases (optional — created by user)
+[ -f ~/clawd/.claw_aliases ] && source ~/clawd/.claw_aliases
 
 # 1Password Service Account Token
 if [ -f ~/.config/openclaw/1password.env ]; then

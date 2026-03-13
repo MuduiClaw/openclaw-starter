@@ -697,7 +697,7 @@ class RollbackManager:
 
 class Notifier:
     def notify_channel(self, message):
-        """发送到 #clawd-日志"""
+        """Send alert to configured alerts channel"""
         return self._send_message(DISCORD_LOG_CHANNEL, message[:2000])
 
     def notify_dm(self, message):
@@ -935,7 +935,7 @@ class GuardianAgent:
         self.notifier.notify_channel(msg[:2000])
         self.notifier.notify_dm(
             f"OpenClaw Gateway 自动修复全部失败，已停机{self.consecutive_failures}轮。"
-            f"请查看 #clawd-日志。"
+            f"请查看 alerts 频道。"
         )
 
     def _save(self):
