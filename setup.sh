@@ -556,7 +556,7 @@ if ! command -v qmd &>/dev/null; then
       if [ ! -f "$QMD_BIN" ]; then
         cat > "$QMD_BIN" << 'QBIN'
 #!/bin/bash
-exec bun run __QMD_DIR__/src/qmd.ts "$@"
+exec bun run __QMD_DIR__/src/cli/qmd.ts "$@"
 QBIN
         sed -i '' "s|__QMD_DIR__|${QMD_DIR}|g" "$QMD_BIN"
         chmod +x "$QMD_BIN"
