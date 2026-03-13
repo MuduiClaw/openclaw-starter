@@ -151,3 +151,13 @@ setup() {
   ! grep -q "task-start" "$HOOKS_DIR/../scripts/verify-test-diff.sh"
   grep -q "spawn-agent" "$HOOKS_DIR/../scripts/verify-test-diff.sh"
 }
+
+# ─── git-push-safe.sh ───
+
+@test "git-push-safe.sh exists and is executable" {
+  [ -x "$SCRIPTS_DIR/git-push-safe.sh" ]
+}
+
+@test "git-push-safe.sh contains TDD remediation logic" {
+  grep -q "TDD" "$SCRIPTS_DIR/git-push-safe.sh"
+}
