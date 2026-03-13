@@ -28,7 +28,7 @@ cd openclaw-starter
 
 ## 你会得到什么
 
-![Dashboard — 实时基建监控面板](https://img.mudui.me/docs/dashboard/dashboard-home-90ca0424.png)
+![Dashboard — 实时基建监控面板](https://img.mudui.me/docs/dashboard/dashboard-hero-87a89c11.png)
 
 | 能力 | 说明 |
 |------|------|
