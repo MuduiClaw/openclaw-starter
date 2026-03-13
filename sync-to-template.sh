@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================================
 # sync-to-template.sh — Maintainer tool
-# Syncs generic files from live environment to starter kit (one-way)
+# Syncs generic files from live environment to ClawKing (one-way)
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       echo "Usage: ./sync-to-template.sh [--source ~/clawd] [--dry-run]"
       echo ""
-      echo "Syncs generic files from live environment to starter kit."
+      echo "Syncs generic files from live environment to ClawKing."
       echo "  --source DIR   Live environment directory (default: ~/clawd)"
       echo "  --dry-run      Show diff only, don't write"
       exit 0 ;;
