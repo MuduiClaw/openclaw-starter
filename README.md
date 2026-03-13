@@ -126,7 +126,7 @@ openclaw cron trigger <job>     # 手动触发
 监控面板 → infra-dashboard (:3001)
 守护进程 → Guardian Agent (自动恢复)
 后台服务 → 8 个 LaunchAgent
-质量门禁 → 7 层 Git Gates (commit → push)
+质量门禁 → 19 层 Git Gates (plan → ship → system)
 ```
 
 ## 项目结构
@@ -156,7 +156,7 @@ openclaw-starter/
 | **[FAQ](docs/FAQ.md)** | 常见问题、排错、升级 |
 | **[架构](docs/ARCHITECTURE.md)** | 系统架构详解 |
 | **[Cron Fleet](docs/CRON-FLEET.md)** | 定时任务使用指南 |
-| **[门禁系统](docs/GATES.md)** | 21 层自动化质量门禁：安装、使用、自定义 |
+| **[门禁系统](docs/GATES.md)** | 19 层自动化质量门禁：按 Loop 阶段组织，含触发统计 |
 | **[Skills](docs/SKILLS-GUIDE.md)** | Skills 扩展指南 |
 | **[升级](docs/UPGRADE.md)** | 三层升级：OpenClaw / Dashboard / Starter |
 | **[排错](docs/TROUBLESHOOTING.md)** | 问题诊断与解决 |
