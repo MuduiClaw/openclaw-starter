@@ -40,13 +40,18 @@ create_dashboard() {
   mkdir -p "$dashboard_dir/.next/static"
   mkdir -p "$dashboard_dir/public"
 
-  printf '{ "version": "%s" }\n' "$version" > "$dashboard_dir/package.json"
-  printf 'console.log("server")\n' > "$dashboard_dir/app.js"
-  printf 'static asset\n' > "$dashboard_dir/.next/static/app.js"
-  printf 'public asset\n' > "$dashboard_dir/public/logo.txt"
+  printf '{ "version": "%s" }
+' "$version" > "$dashboard_dir/package.json"
+  printf 'console.log("server")
+' > "$dashboard_dir/app.js"
+  printf 'static asset
+' > "$dashboard_dir/.next/static/app.js"
+  printf 'public asset
+' > "$dashboard_dir/public/logo.txt"
 
   if [[ "$with_server" == "1" ]]; then
-    printf 'console.log("server")\n' > "$dashboard_dir/.next/standalone/server.js"
+    printf 'console.log("server")
+' > "$dashboard_dir/.next/standalone/server.js"
   fi
 
   if [[ "$with_sqlite" == "1" ]]; then
@@ -55,10 +60,14 @@ create_dashboard() {
     mkdir -p "$dashboard_dir/node_modules/better-sqlite3/deps"
     mkdir -p "$dashboard_dir/.next/standalone/node_modules/better-sqlite3"
 
-    printf 'native addon\n' > "$dashboard_dir/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
-    printf 'binding\n' > "$dashboard_dir/node_modules/better-sqlite3/binding.gyp"
-    printf 'source\n' > "$dashboard_dir/node_modules/better-sqlite3/src/addon.cc"
-    printf 'dependency\n' > "$dashboard_dir/node_modules/better-sqlite3/deps/sqlite3.c"
+    printf 'native addon
+' > "$dashboard_dir/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+    printf 'binding
+' > "$dashboard_dir/node_modules/better-sqlite3/binding.gyp"
+    printf 'source
+' > "$dashboard_dir/node_modules/better-sqlite3/src/addon.cc"
+    printf 'dependency
+' > "$dashboard_dir/node_modules/better-sqlite3/deps/sqlite3.c"
   fi
 }
 
@@ -68,7 +77,8 @@ create_stub_node() {
 set -eu
 
 if [ "${1-}" = "--version" ]; then
-  printf '%s\n' "${NODE_VERSION:-v20.11.1}"
+  printf '%s
+' "${NODE_VERSION:-v20.11.1}"
   exit 0
 fi
 
@@ -80,7 +90,8 @@ if [ "${1-}" = "-e" ]; then
   exit 0
 fi
 
-printf 'unexpected node invocation: %s\n' "$*" >&2
+printf 'unexpected node invocation: %s
+' "$*" >&2
 exit 1
 EOF
   chmod +x "$STUB_BIN/node"
@@ -90,7 +101,8 @@ create_stub_git() {
   cat <<'EOF' > "$STUB_BIN/git"
 #!/bin/sh
 set -eu
-printf '%s\n' "$*" >> "$COMMAND_LOG"
+printf '%s
+' "$*" >> "$COMMAND_LOG"
 exit 0
 EOF
   chmod +x "$STUB_BIN/git"
@@ -100,7 +112,8 @@ create_stub_npm() {
   cat <<'EOF' > "$STUB_BIN/npm"
 #!/bin/sh
 set -eu
-printf '%s|%s\n' "${NEXT_PUBLIC_EDITION-}" "$*" >> "$NPM_LOG"
+printf '%s|%s
+' "${NEXT_PUBLIC_EDITION-}" "$*" >> "$NPM_LOG"
 exit 0
 EOF
   chmod +x "$STUB_BIN/npm"
@@ -111,10 +124,12 @@ create_stub_gh() {
 #!/bin/sh
 set -eu
 
-printf 'gh %s\n' "$*" >> "$GH_LOG"
+printf 'gh %s
+' "$*" >> "$GH_LOG"
 
 if [ "$#" -ge 3 ] && [ "$1" = "release" ] && [ "$2" = "view" ]; then
-  printf 'view:%s\n' "$3" >> "$GH_LOG"
+  printf 'view:%s
+' "$3" >> "$GH_LOG"
   if [ "${GH_RELEASE_EXISTS:-0}" = "1" ]; then
     exit 0
   fi
@@ -122,7 +137,8 @@ if [ "$#" -ge 3 ] && [ "$1" = "release" ] && [ "$2" = "view" ]; then
 fi
 
 if [ "$#" -ge 3 ] && [ "$1" = "release" ] && [ "$2" = "delete" ]; then
-  printf 'delete:%s\n' "$3" >> "$GH_LOG"
+  printf 'delete:%s
+' "$3" >> "$GH_LOG"
   exit 0
 fi
 
@@ -130,22 +146,27 @@ if [ "$#" -ge 4 ] && [ "$1" = "release" ] && [ "$2" = "create" ]; then
   tag="$3"
   asset="$4"
 
-  printf 'create:%s\n' "$tag" >> "$GH_LOG"
-  printf 'asset:%s\n' "$asset" >> "$GH_LOG"
+  printf 'create:%s
+' "$tag" >> "$GH_LOG"
+  printf 'asset:%s
+' "$asset" >> "$GH_LOG"
 
   shift 4
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --repo)
-        printf 'repo:%s\n' "$2" >> "$GH_LOG"
+        printf 'repo:%s
+' "$2" >> "$GH_LOG"
         shift 2
         ;;
       --title)
-        printf 'title:%s\n' "$2" >> "$GH_LOG"
+        printf 'title:%s
+' "$2" >> "$GH_LOG"
         shift 2
         ;;
       --notes)
-        printf 'notes:%s\n' "$2" >> "$GH_LOG"
+        printf 'notes:%s
+' "$2" >> "$GH_LOG"
         shift 2
         ;;
       *)
@@ -163,11 +184,13 @@ if [ "$#" -ge 4 ] && [ "$1" = "release" ] && [ "$2" = "create" ]; then
 fi
 
 if [ "${1-}" = "api" ]; then
-  printf 'api:%s\n' "$*" >> "$GH_LOG"
+  printf 'api:%s
+' "$*" >> "$GH_LOG"
   exit 0
 fi
 
-printf 'unexpected gh invocation: %s\n' "$*" >&2
+printf 'unexpected gh invocation: %s
+' "$*" >&2
 exit 1
 EOF
   chmod +x "$STUB_BIN/gh"
@@ -218,14 +241,14 @@ run_release_dashboard() {
   [[ "$output" == *"Building infra-dashboard v1.2.3"* ]]
   [[ "$output" == *"Included better-sqlite3 native addon"* ]]
   [[ "$output" == *"Download URL verified (HTTP 200)"* ]]
-  [[ "$output" == *"Released: https://github.com/MuduiClaw/openclaw-starter/releases/tag/dashboard-v1.2.3"* ]]
-  [[ "$output" == *"Done. infra-dashboard v1.2.3 published to MuduiClaw/openclaw-starter releases."* ]]
+  [[ "$output" == *"Released: https://github.com/MuduiClaw/ClawKing/releases/tag/dashboard-v1.2.3"* ]]
+  [[ "$output" == *"Done. infra-dashboard v1.2.3 published to MuduiClaw/ClawKing releases."* ]]
 
   grep -Fq "|install --prefer-offline" "$NPM_LOG"
   grep -Fq "starter|run build" "$NPM_LOG"
 
   grep -Fq "create:dashboard-v1.2.3" "$GH_LOG"
-  grep -Fq "repo:MuduiClaw/openclaw-starter" "$GH_LOG"
+  grep -Fq "repo:MuduiClaw/ClawKing" "$GH_LOG"
   grep -Fq "title:infra-dashboard v1.2.3 (standalone)" "$GH_LOG"
   grep -Fq "notes:Pre-built infra-dashboard v1.2.3 standalone bundle." "$GH_LOG"
 
@@ -253,7 +276,7 @@ run_release_dashboard() {
 
   grep -Fq "view:dashboard-v9.9.9" "$GH_LOG"
   grep -Fq "delete:dashboard-v9.9.9" "$GH_LOG"
-  grep -Fq "api:api -X DELETE repos/MuduiClaw/openclaw-starter/git/refs/tags/dashboard-v9.9.9" "$GH_LOG"
+  grep -Fq "api:api -X DELETE repos/MuduiClaw/ClawKing/git/refs/tags/dashboard-v9.9.9" "$GH_LOG"
   grep -Fq "create:dashboard-v9.9.9" "$GH_LOG"
 }
 
@@ -275,5 +298,5 @@ run_release_dashboard() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Download URL returned HTTP 000"* ]]
-  [[ "$output" == *"Done. infra-dashboard v3.4.5 published to MuduiClaw/openclaw-starter releases."* ]]
+  [[ "$output" == *"Done. infra-dashboard v3.4.5 published to MuduiClaw/ClawKing releases."* ]]
 }

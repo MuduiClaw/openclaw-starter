@@ -90,7 +90,7 @@ openclaw config set 'agents.defaults.model.fallbackChain' '["anthropic/claude-so
 ### Q: 怎么更新 Dashboard？
 
 ```bash
-cd ~/openclaw-starter && git pull && ./setup.sh --update-dashboard
+cd ~/ClawKing && git pull && ./setup.sh --update-dashboard
 ```
 
 一条命令：备份旧版 → 下载最新 → 重编译 → 重启。
@@ -192,7 +192,7 @@ tail -f ~/.openclaw/logs/infra-dashboard.log  # Dashboard
 重跑 setup.sh，它会更新所有 LaunchAgent 的 PATH：
 
 ```bash
-cd ~/openclaw-starter && ./setup.sh
+cd ~/ClawKing && ./setup.sh
 ```
 
 ---
@@ -219,16 +219,16 @@ macOS Ventura+ 限制了命令行开启 Remote Login。setup.sh 会自动弹出�
 bash ~/clawd/scripts/safe-upgrade-openclaw.sh
 ```
 
-### Q: 怎么升级 Starter Kit？
+### Q: 怎么升级 ClawKing？
 
 ```bash
-cd ~/openclaw-starter && git pull && ./setup.sh
+cd ~/ClawKing && git pull && ./setup.sh
 ```
 
 ### Q: 怎么升级 Dashboard？
 
 ```bash
-cd ~/openclaw-starter && git pull && ./setup.sh --update-dashboard
+cd ~/ClawKing && git pull && ./setup.sh --update-dashboard
 ```
 
 详见 [UPGRADE.md](UPGRADE.md)。

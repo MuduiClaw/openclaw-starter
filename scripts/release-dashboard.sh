@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================================
 # release-dashboard.sh
-# Build infra-dashboard standalone and upload to openclaw-starter GitHub Release.
+# Build infra-dashboard standalone and upload to ClawKing GitHub Release.
 #
 # Usage:
 #   bash scripts/release-dashboard.sh [--version 1.0.1]
@@ -14,17 +14,20 @@ set -euo pipefail
 #   - ~/projects/shared-ui exists (dependency)
 # ============================================================================
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+RED='[0;31m'
+GREEN='[0;32m'
+CYAN='[0;36m'
+NC='[0m'
 
-info()    { printf "${CYAN}[release]${NC} %s\n" "$*"; }
-success() { printf "${GREEN}[release]${NC} %s ✓\n" "$*"; }
-fatal()   { printf "${RED}[release]${NC} %s\n" "$*"; exit 1; }
+info()    { printf "${CYAN}[release]${NC} %s
+" "$*"; }
+success() { printf "${GREEN}[release]${NC} %s ✓
+" "$*"; }
+fatal()   { printf "${RED}[release]${NC} %s
+" "$*"; exit 1; }
 
 DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
-STARTER_REPO="MuduiClaw/openclaw-starter"
+STARTER_REPO="MuduiClaw/ClawKing"
 TARBALL="/tmp/infra-dashboard-standalone.tar.gz"
 
 # Parse args
@@ -111,7 +114,8 @@ HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" \
 if [[ "$HTTP_CODE" == "200" ]]; then
   success "Download URL verified (HTTP 200)"
 else
-  printf "${RED}[release]${NC} Download URL returned HTTP %s — check release\n" "$HTTP_CODE"
+  printf "${RED}[release]${NC} Download URL returned HTTP %s — check release
+" "$HTTP_CODE"
 fi
 
 # Cleanup

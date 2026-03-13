@@ -1,7 +1,7 @@
-# AGENTS.md — openclaw-starter
+# AGENTS.md — ClawKing
 
 ## 项目定位
-OpenClaw Starter Kit：把 battle-tested 的 OpenClaw 全套能力打包成可分发的一键安装包。
+ClawKing 🦞：把 battle-tested 的 OpenClaw 全套能力打包成可分发的一键安装包。
 
 ## 核心规则
 

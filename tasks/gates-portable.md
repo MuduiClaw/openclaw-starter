@@ -7,7 +7,7 @@
 
 ## 一句话
 
-让 openclaw-starter 用户 clone 后能一键激活门禁系统，并理解它在保护什么。
+让 ClawKing 用户 clone 后能一键激活门禁系统，并理解它在保护什么。
 
 ## 背景
 

@@ -1,6 +1,6 @@
 # Upgrade Guide
 
-> 三个层面的升级：OpenClaw 本体、infra-dashboard、Starter Kit
+> 三个层面的升级：OpenClaw 本体、infra-dashboard、ClawKing
 
 ## OpenClaw 升级
 
@@ -33,10 +33,10 @@ launchctl unload ~/Library/LaunchAgents/com.openclaw.infra-dashboard.plist
 launchctl load ~/Library/LaunchAgents/com.openclaw.infra-dashboard.plist
 ```
 
-## Starter Kit 升级
+## ClawKing 升级
 
 ```bash
-cd ~/path-to/openclaw-starter
+cd ~/path-to/ClawKing
 git pull
 
 # 重新运行 setup（幂等，安全）
@@ -87,8 +87,8 @@ npm update -g
 # 升级 Homebrew
 brew update && brew upgrade
 
-# 升级 Starter Kit
-cd ~/path-to/openclaw-starter && git pull && ./setup.sh
+# 升级 ClawKing
+cd ~/path-to/ClawKing && git pull && ./setup.sh
 ```
 
 ## 回滚

@@ -28,7 +28,7 @@
 一行命令，全新 Mac 也能跑：
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MuduiClaw/openclaw-starter/main/bootstrap.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/MuduiClaw/ClawKing/main/bootstrap.sh)"
 ```
 
 > 全新 Mac 会自动安装 Xcode Command Line Tools（首次可能需要几分钟）。
@@ -37,8 +37,8 @@
 <summary>或者手动 clone</summary>
 
 ```bash
-git clone https://github.com/MuduiClaw/openclaw-starter.git
-cd openclaw-starter
+git clone https://github.com/MuduiClaw/ClawKing.git
+cd ClawKing
 ./setup.sh
 ```
 </details>
@@ -78,7 +78,7 @@ Node.js、Homebrew 等依赖全部由安装脚本自动处理。
 ## 安装过程
 
 ```
-🦞 OpenClaw Starter v1.3.1
+🦞 ClawKing 🦞 v1.3.1
 
 [1/3] 依赖安装
      OpenClaw ✓  Codex ✓  Claude Code ✓  Gemini CLI ✓
@@ -155,7 +155,7 @@ openclaw cron trigger <job>     # 手动触发
 ## 项目结构
 
 ```
-openclaw-starter/
+ClawKing/
 ├── bootstrap.sh             # 一行 curl 入口
 ├── setup.sh                 # 主安装脚本
 ├── workspace/               # → 安装到 ~/clawd

@@ -32,7 +32,7 @@ ls ~/.nvm/versions/node/*/lib/node_modules/openclaw/skills/
 ```
 
 ### 2. 自定义 Skills（24 个）
-Starter Kit 包含的 battle-tested skills：
+ClawKing 包含的 battle-tested skills：
 
 | Skill | 用途 |
 |-------|------|

@@ -1,7 +1,7 @@
 # Spec: Oracle Audit 9 Fixes
 
 > 状态: ✅ 已完成 (commit `063fd7b`)
-> 触发: 用户在新机器上部署 openclaw-starter，遇到 infra-dashboard token 不匹配 + Control UI "gateway token missing"
+> 触发: 用户在新机器上部署 ClawKing，遇到 infra-dashboard token 不匹配 + Control UI "gateway token missing"
 > Oracle 审查发现 9 个问题
 
 ## 目标

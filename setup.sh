@@ -4,7 +4,7 @@ set -uo pipefail
 # (e.g., qmd failing shouldn't prevent gateway startup)
 
 # ============================================================================
-# OpenClaw Starter Kit — setup.sh
+# ClawKing 🦞 — setup.sh
 # Interactive, idempotent installer. User does 2 things:
 #   1. Run this script
 #   2. Paste Chat Channel token (Discord or 飞书)
@@ -28,28 +28,38 @@ NO_CAFFEINATE=false
 UPDATE_DASHBOARD=false
 
 # --- Colors ---
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m'
+RED='[0;31m'
+GREEN='[0;32m'
+YELLOW='[1;33m'
+BLUE='[0;34m'
+CYAN='[0;36m'
+BOLD='[1m'
+DIM='[2m'
+NC='[0m'
 
 # --- Helpers ---
-info()    { printf "${BLUE}     %s${NC}\n" "$*"; }
-success() { printf "${GREEN}     %s ✓${NC}\n" "$*"; }
-warn()    { printf "${YELLOW}     ⚠ %s${NC}\n" "$*"; }
-error()   { printf "${RED}     ✗ %s${NC}\n" "$*"; }
+info()    { printf "${BLUE}     %s${NC}
+" "$*"; }
+success() { printf "${GREEN}     %s ✓${NC}
+" "$*"; }
+warn()    { printf "${YELLOW}     ⚠ %s${NC}
+" "$*"; }
+error()   { printf "${RED}     ✗ %s${NC}
+" "$*"; }
 fatal()   { error "$*"; exit 1; }
-step()    { printf "\n${BOLD}${CYAN}[%s]${NC} ${BOLD}%s${NC}\n" "$1" "$2"; }
+step()    { printf "
+${BOLD}${CYAN}[%s]${NC} ${BOLD}%s${NC}
+" "$1" "$2"; }
 ask()     { printf "${BOLD}     %s${NC} " "$1"; }
 
-section() { printf "\n${BOLD}${CYAN}━━━ %s ━━━${NC}\n\n" "$*"; }
+section() { printf "
+${BOLD}${CYAN}━━━ %s ━━━${NC}
+
+" "$*"; }
 
 progress_done() {
-  printf "${GREEN}     %-30s ✓${NC}\n" "$1"
+  printf "${GREEN}     %-30s ✓${NC}
+" "$1"
 }
 
 # --- Parse Flags ---
@@ -73,7 +83,7 @@ done
 # UNINSTALL MODE
 # ============================================================================
 if $UNINSTALL; then
-  step "🗑" "Uninstalling OpenClaw Starter Kit"
+  step "🗑" "Uninstalling ClawKing 🦞"
 
   # Unload LaunchAgents
   for plist in ai.openclaw.gateway ai.openclaw.guardian ai.openclaw.backup \
@@ -157,11 +167,16 @@ except: pass
 
   echo ""
   info "以下内容未自动删除（可能被其他项目使用）："
-  printf "   ${DIM}npm 全局包:${NC}  npm uninstall -g openclaw @openai/codex @anthropic-ai/claude-code @google/gemini-cli @steipete/oracle mcporter clawhub playwright @upstash/context7-mcp\n"
-  printf "   ${DIM}Homebrew 包:${NC} brew uninstall node git tailscale\n"
-  printf "   ${DIM}Bun 运行时:${NC}  rm -rf ~/.bun\n"
-  printf "   ${DIM}uv 运行时:${NC}   rm -rf ~/.local/bin/uv ~/.local/bin/uvx\n"
-  printf "   ${DIM}Shell PATH:${NC}  检查 ~/.zprofile 删除 OpenClaw 追加的 PATH 行\n"
+  printf "   ${DIM}npm 全局包:${NC}  npm uninstall -g openclaw @openai/codex @anthropic-ai/claude-code @google/gemini-cli @steipete/oracle mcporter clawhub playwright @upstash/context7-mcp
+"
+  printf "   ${DIM}Homebrew 包:${NC} brew uninstall node git tailscale
+"
+  printf "   ${DIM}Bun 运行时:${NC}  rm -rf ~/.bun
+"
+  printf "   ${DIM}uv 运行时:${NC}   rm -rf ~/.local/bin/uv ~/.local/bin/uvx
+"
+  printf "   ${DIM}Shell PATH:${NC}  检查 ~/.zprofile 删除 OpenClaw 追加的 PATH 行
+"
   exit 0
 fi
 
@@ -170,7 +185,7 @@ fi
 # ============================================================================
 if $UPDATE_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
-  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/openclaw-starter/releases/latest/download/infra-dashboard-standalone.tar.gz"
+  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/ClawKing/releases/latest/download/infra-dashboard-standalone.tar.gz"
 
   step "📦" "Updating infra-dashboard"
 
@@ -243,8 +258,12 @@ fi
 # ============================================================================
 # HEADER
 # ============================================================================
-printf "\n${BOLD}🦞 OpenClaw Starter Kit v%s${NC}\n" "$STARTER_VERSION"
-printf "${DIM}   Battle-tested AI partner setup for macOS${NC}\n\n"
+printf "
+${BOLD}🦞 ClawKing 🦞 v%s${NC}
+" "$STARTER_VERSION"
+printf "${DIM}   Battle-tested AI partner setup for macOS${NC}
+
+"
 
 # ============================================================================
 # STEP 0: PRE-FLIGHT CHECKS
@@ -634,7 +653,10 @@ if ! command -v blogwatcher &>/dev/null; then
       fi
       # Ensure Go bin PATH in .zprofile for LaunchAgent
       if ! grep -q 'go/bin' "$HOME/.zprofile" 2>/dev/null; then
-        printf '\n# Go binaries\nexport PATH="$PATH:$HOME/go/bin"\n' >> "$HOME/.zprofile"
+        printf '
+# Go binaries
+export PATH="$PATH:$HOME/go/bin"
+' >> "$HOME/.zprofile"
       fi
     fi
   fi
@@ -649,10 +671,15 @@ fi
 if ! $NO_TAILSCALE; then
   if ! command -v tailscale &>/dev/null; then
     # Ask user before installing Tailscale (requires sudo + browser auth)
-    printf "\n${BOLD}Tailscale${NC} — 免费的安全组网工具\n"
-    printf "  • 从手机/笔记本远程 SSH 到这台机器\n"
-    printf "  • MCP Bridge 远程控制（让 IDE 跨设备调用本机 AI 工具链）\n"
-    printf "  • 安装后需用浏览器登录授权（免费账号，支持 Google/GitHub 登录）\n"
+    printf "
+${BOLD}Tailscale${NC} — 免费的安全组网工具
+"
+    printf "  • 从手机/笔记本远程 SSH 到这台机器
+"
+    printf "  • MCP Bridge 远程控制（让 IDE 跨设备调用本机 AI 工具链）
+"
+    printf "  • 安装后需用浏览器登录授权（免费账号，支持 Google/GitHub 登录）
+"
     printf "是否安装 Tailscale？[y/N] "
     read -r TS_ANSWER </dev/tty 2>/dev/null || TS_ANSWER="n"
     if [[ ! "$TS_ANSWER" =~ ^[Yy] ]]; then
@@ -780,8 +807,10 @@ else
   echo ""
   warn "⚠️  macOS 限制：需要手动开启远程登录"
   echo ""
-  printf "   ${BOLD}正在打开系统设置...${NC}\n"
-  printf "   请在弹出的设置页面中找到 ${CYAN}远程登录 (Remote Login)${NC} 并打开\n"
+  printf "   ${BOLD}正在打开系统设置...${NC}
+"
+  printf "   请在弹出的设置页面中找到 ${CYAN}远程登录 (Remote Login)${NC} 并打开
+"
   echo ""
   # macOS Ventura+ 使用新的 URL scheme
   open "x-apple.systempreferences:com.apple.Sharing-Settings.extension" 2>/dev/null \
@@ -1030,12 +1059,18 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
 
   # --- LLM Model Selection ---
   echo ""
-  printf "${BOLD}     LLM 模型 — 选择方式:${NC}\n"
-  printf "       ${CYAN}1.${NC} MiniMax M2.5 ${DIM}(价格便宜，推荐)${NC}\n"
-  printf "       ${CYAN}2.${NC} Anthropic API Key ${DIM}(按量付费)${NC}\n"
-  printf "       ${CYAN}3.${NC} Anthropic setup-token ${DIM}(用 Claude Pro/Max 订阅额度)${NC}\n"
-  printf "       ${DIM}       MiniMax 注册: https://platform.minimax.io${NC}\n"
-  printf "       ${DIM}       Anthropic: https://docs.openclaw.ai/providers/anthropic${NC}\n"
+  printf "${BOLD}     LLM 模型 — 选择方式:${NC}
+"
+  printf "       ${CYAN}1.${NC} MiniMax M2.5 ${DIM}(价格便宜，推荐)${NC}
+"
+  printf "       ${CYAN}2.${NC} Anthropic API Key ${DIM}(按量付费)${NC}
+"
+  printf "       ${CYAN}3.${NC} Anthropic setup-token ${DIM}(用 Claude Pro/Max 订阅额度)${NC}
+"
+  printf "       ${DIM}       MiniMax 注册: https://platform.minimax.io${NC}
+"
+  printf "       ${DIM}       Anthropic: https://docs.openclaw.ai/providers/anthropic${NC}
+"
   echo ""
   ask "> "
   read -r auth_choice
@@ -1076,7 +1111,8 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
       ANTHROPIC_MODE="setup-token"
       echo ""
       info "请在另一个终端运行:"
-      printf "       ${BOLD}claude setup-token${NC}\n"
+      printf "       ${BOLD}claude setup-token${NC}
+"
       info "然后粘贴获得的 token"
       echo ""
       ask "Setup Token: "
@@ -1113,10 +1149,14 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
   FEISHU_APP_ID=""
   FEISHU_APP_SECRET=""
   BRAVE_API_KEY=""
-  printf "${BOLD}     Chat Channel — 选择一个:${NC}\n"
-  printf "       ${CYAN}1.${NC} Discord\n"
-  printf "       ${CYAN}2.${NC} 飞书 (Feishu)\n"
-  printf "       ${CYAN}3.${NC} 跳过 ${DIM}(稍后通过 Dashboard 或 openclaw channels add 配置)${NC}\n"
+  printf "${BOLD}     Chat Channel — 选择一个:${NC}
+"
+  printf "       ${CYAN}1.${NC} Discord
+"
+  printf "       ${CYAN}2.${NC} 飞书 (Feishu)
+"
+  printf "       ${CYAN}3.${NC} 跳过 ${DIM}(稍后通过 Dashboard 或 openclaw channels add 配置)${NC}
+"
   echo ""
   ask "> [3] "
   read -r channel_choice
@@ -1163,25 +1203,34 @@ if [[ "${SKIP_CONFIG:-false}" != "true" ]]; then
 
   # --- Review & Confirm ---
   echo ""
-  printf "${BOLD}     配置确认:${NC}\n"
+  printf "${BOLD}     配置确认:${NC}
+"
   if [[ "$ANTHROPIC_MODE" == "none" ]] || [[ -z "$ANTHROPIC_KEY" ]]; then
-    printf "       模型:  MiniMax M2.5\n"
+    printf "       模型:  MiniMax M2.5
+"
   elif [[ "$ANTHROPIC_MODE" == "api-key" ]]; then
-    printf "       模型:  Anthropic API Key${MINIMAX_KEY:+ + MiniMax fallback}\n"
+    printf "       模型:  Anthropic API Key${MINIMAX_KEY:+ + MiniMax fallback}
+"
   else
-    printf "       模型:  Anthropic OAuth${MINIMAX_KEY:+ + MiniMax fallback}\n"
+    printf "       模型:  Anthropic OAuth${MINIMAX_KEY:+ + MiniMax fallback}
+"
   fi
   if [[ "$CHANNEL_TYPE" == "discord" ]]; then
-    printf "       频道:  Discord (Guild: ${DISCORD_GUILD:-未设置})\n"
+    printf "       频道:  Discord (Guild: ${DISCORD_GUILD:-未设置})
+"
   elif [[ "$CHANNEL_TYPE" == "feishu" ]]; then
-    printf "       频道:  飞书 (App: ${FEISHU_APP_ID:-未设置})\n"
+    printf "       频道:  飞书 (App: ${FEISHU_APP_ID:-未设置})
+"
   else
-    printf "       频道:  ${DIM}未配置（稍后添加）${NC}\n"
+    printf "       频道:  ${DIM}未配置（稍后添加）${NC}
+"
   fi
   if [[ -n "$BRAVE_API_KEY" ]]; then
-    printf "       搜索:  Brave Search 已配置\n"
+    printf "       搜索:  Brave Search 已配置
+"
   else
-    printf "       搜索:  ${DIM}未配置（稍后在 Dashboard 添加）${NC}\n"
+    printf "       搜索:  ${DIM}未配置（稍后在 Dashboard 添加）${NC}
+"
   fi
   echo ""
   ask "确认以上配置？[Y/n] (n=重新配置) "
@@ -1393,7 +1442,7 @@ step "3/3" "启动 (Launch)"
 # --- infra-dashboard (pre-built standalone from GitHub Release) ---
 if ! $SKIP_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
-  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/openclaw-starter/releases/latest/download/infra-dashboard-standalone.tar.gz"
+  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/ClawKing/releases/latest/download/infra-dashboard-standalone.tar.gz"
 
   if [ ! -d "$DASHBOARD_DIR" ] || [ ! -f "$DASHBOARD_DIR/server.js" ]; then
     info "Installing infra-dashboard (standalone)..."
@@ -1735,27 +1784,35 @@ fi
 # COMPLETE
 # ============================================================================
 echo ""
-printf "${BOLD}${GREEN}🎉 你的 AI 合伙人已就绪。${NC}\n"
+printf "${BOLD}${GREEN}🎉 你的 AI 合伙人已就绪。${NC}
+"
 echo ""
-printf "   ${BOLD}Workspace:${NC}   %s\n" "$WORKSPACE_DIR"
-printf "   ${BOLD}Config:${NC}      %s\n" "${OPENCLAW_STATE}/openclaw.json"
+printf "   ${BOLD}Workspace:${NC}   %s
+" "$WORKSPACE_DIR"
+printf "   ${BOLD}Config:${NC}      %s
+" "${OPENCLAW_STATE}/openclaw.json"
 # Build Control UI URL with gateway token for auto-auth
 _CTRL_URL="http://localhost:3456"
 _GW_T=$(python3 -c "import json; c=json.load(open('${OPENCLAW_STATE}/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null || true)
 if [[ -n "$_GW_T" ]]; then
   _CTRL_URL="http://localhost:3456/#token=${_GW_T}"
 fi
-printf "   ${BOLD}Control UI:${NC}  ${CYAN}${_CTRL_URL}${NC}  ${DIM}(跟 AI 对话)${NC}\n"
-printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}\n"
+printf "   ${BOLD}Control UI:${NC}  ${CYAN}${_CTRL_URL}${NC}  ${DIM}(跟 AI 对话)${NC}
+"
+printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}
+"
 
 if [ -d "${HOME}/projects/infra-dashboard" ]; then
   DASHBOARD_ENV="${HOME}/.config/openclaw/dashboard.env"
   if [ -f "$DASHBOARD_ENV" ]; then
     _DASH_T=$(grep DASHBOARD_TOKEN "$DASHBOARD_ENV" | sed 's/export DASHBOARD_TOKEN=//' | sed 's/DASHBOARD_TOKEN=//')
-    printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001/?token=${_DASH_T}${NC}  ${DIM}(基建监控)${NC}\n"
-    printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}\n"
+    printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001/?token=${_DASH_T}${NC}  ${DIM}(基建监控)${NC}
+"
+    printf "   ${DIM}              ↑ 保存到浏览器书签，自动登录${NC}
+"
   else
-    printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}  ${DIM}(基建监控)${NC}\n"
+    printf "   ${BOLD}Dashboard:${NC}   ${CYAN}http://localhost:3001${NC}  ${DIM}(基建监控)${NC}
+"
   fi
 fi
 
@@ -1778,26 +1835,36 @@ fi
 GW_TOKEN_DISPLAY=$(python3 -c "import json; c=json.load(open('${HOME}/.openclaw/openclaw.json')); print(c.get('gateway',{}).get('auth',{}).get('token',''))" 2>/dev/null)
 if [[ -n "$GW_TOKEN_DISPLAY" ]]; then
   echo ""
-  printf "   ${BOLD}⚡ Gateway Token:${NC} ${CYAN}${GW_TOKEN_DISPLAY}${NC}\n"
-  printf "   ${DIM}   (已嵌入上方 URL，保存书签即可。如需手动输入，复制此 token)${NC}\n"
+  printf "   ${BOLD}⚡ Gateway Token:${NC} ${CYAN}${GW_TOKEN_DISPLAY}${NC}
+"
+  printf "   ${DIM}   (已嵌入上方 URL，保存书签即可。如需手动输入，复制此 token)${NC}
+"
 fi
 
 # Show Tailscale info if available
 TS_IP_FINAL=$(tailscale ip -4 2>/dev/null || echo "")
 if [[ -n "$TS_IP_FINAL" ]]; then
-  printf "   ${BOLD}Tailscale:${NC}   ${CYAN}ssh $(whoami)@${TS_IP_FINAL}${NC}\n"
+  printf "   ${BOLD}Tailscale:${NC}   ${CYAN}ssh $(whoami)@${TS_IP_FINAL}${NC}
+"
 fi
 
 echo ""
-printf "   ${BOLD}下一步:${NC}\n"
+printf "   ${BOLD}下一步:${NC}
+"
 if [[ "${CHANNEL_TYPE:-}" == "discord" ]]; then
-  printf "   ${DIM}→ 在 Discord 跟你的 AI 说句话试试${NC}\n"
+  printf "   ${DIM}→ 在 Discord 跟你的 AI 说句话试试${NC}
+"
 elif [[ "${CHANNEL_TYPE:-}" == "feishu" ]]; then
-  printf "   ${DIM}→ 在飞书跟你的 AI 说句话试试${NC}\n"
+  printf "   ${DIM}→ 在飞书跟你的 AI 说句话试试${NC}
+"
 fi
-printf "   ${DIM}→ 编辑 ${WORKSPACE_DIR}/SOUL.md 定义你的 AI 人格${NC}\n"
-printf "   ${DIM}→ 编辑 ${WORKSPACE_DIR}/USER.md 告诉 AI 你是谁${NC}\n"
-printf "   ${DIM}→ 查看文档: https://docs.openclaw.ai${NC}\n"
+printf "   ${DIM}→ 编辑 ${WORKSPACE_DIR}/SOUL.md 定义你的 AI 人格${NC}
+"
+printf "   ${DIM}→ 编辑 ${WORKSPACE_DIR}/USER.md 告诉 AI 你是谁${NC}
+"
+printf "   ${DIM}→ 查看文档: https://docs.openclaw.ai${NC}
+"
 echo ""
-printf "   ${DIM}遇到问题? 运行: openclaw status${NC}\n"
+printf "   ${DIM}遇到问题? 运行: openclaw status${NC}
+"
 echo ""

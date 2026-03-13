@@ -1,5 +1,5 @@
 #!/bin/bash
-# check-launchagent-health.sh — Starter Kit LaunchAgent health check
+# check-launchagent-health.sh — ClawKing LaunchAgent health check
 # Returns JSON for infra-dashboard consumption
 
 AGENTS=(

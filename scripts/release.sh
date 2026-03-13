@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================================================
-# release.sh — openclaw-starter release automation
+# release.sh — ClawKing release automation
 #
 # Usage:
 #   bash scripts/release.sh [--version 1.4.0] [--dry-run]
@@ -18,16 +18,20 @@ set -euo pipefail
 #   - This script moves its contents to the new version section
 # ============================================================================
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-DIM='\033[2m'
-NC='\033[0m'
+RED='[0;31m'
+GREEN='[0;32m'
+CYAN='[0;36m'
+DIM='[2m'
+NC='[0m'
 
-info()    { printf "${CYAN}[release]${NC} %s\n" "$*"; }
-success() { printf "${GREEN}[release]${NC} %s ✓\n" "$*"; }
-warn()    { printf "${RED}[release]${NC} %s\n" "$*"; }
-fatal()   { printf "${RED}[release]${NC} %s\n" "$*"; exit 1; }
+info()    { printf "${CYAN}[release]${NC} %s
+" "$*"; }
+success() { printf "${GREEN}[release]${NC} %s ✓
+" "$*"; }
+warn()    { printf "${RED}[release]${NC} %s
+" "$*"; }
+fatal()   { printf "${RED}[release]${NC} %s
+" "$*"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -108,11 +112,15 @@ fi
 # --- Preview ---
 echo ""
 info "Release plan:"
-printf "  ${DIM}Version:${NC}   %s → %s\n" "$CURRENT_VERSION" "$VERSION"
-printf "  ${DIM}Tag:${NC}       v%s\n" "$VERSION"
-printf "  ${DIM}Changes:${NC}\n"
+printf "  ${DIM}Version:${NC}   %s → %s
+" "$CURRENT_VERSION" "$VERSION"
+printf "  ${DIM}Tag:${NC}       v%s
+" "$VERSION"
+printf "  ${DIM}Changes:${NC}
+"
 echo "$UNRELEASED_CONTENT" | head -15 | sed 's/^/    /'
-[[ $(echo "$UNRELEASED_CONTENT" | wc -l) -gt 15 ]] && printf "    ${DIM}... (%d more lines)${NC}\n" "$(( $(echo "$UNRELEASED_CONTENT" | wc -l) - 15 ))"
+[[ $(echo "$UNRELEASED_CONTENT" | wc -l) -gt 15 ]] && printf "    ${DIM}... (%d more lines)${NC}
+" "$(( $(echo "$UNRELEASED_CONTENT" | wc -l) - 15 ))"
 echo ""
 
 if $DRY_RUN; then
@@ -133,9 +141,9 @@ TODAY=$(date +%Y-%m-%d)
 sed -i '' "s/^## \[Unreleased\]/## [${VERSION}] - ${TODAY}/" CHANGELOG.md
 
 # Add new [Unreleased] section at the top (after # Changelog header)
-sed -i '' "/^# Changelog/a\\
-\\
-## [Unreleased]\\
+sed -i '' "/^# Changelog/a\
+\
+## [Unreleased]\
 " CHANGELOG.md
 
 success "CHANGELOG → [${VERSION}] - ${TODAY}"
@@ -151,6 +159,9 @@ git push origin "v${VERSION}"
 
 success "Released: v${VERSION}"
 echo ""
-printf "  ${CYAN}GitHub:${NC} https://github.com/MuduiClaw/openclaw-starter/releases/tag/v${VERSION}\n"
-printf "  ${DIM}Create GitHub Release manually or via:${NC}\n"
-printf "  gh release create v${VERSION} --title 'v${VERSION}' --notes-file <(sed -n '/^## \\[${VERSION}\\]/,/^## \\[/{/^## \\[${VERSION}\\]/d;/^## \\[/d;p;}' CHANGELOG.md)\n"
+printf "  ${CYAN}GitHub:${NC} https://github.com/MuduiClaw/ClawKing/releases/tag/v${VERSION}
+"
+printf "  ${DIM}Create GitHub Release manually or via:${NC}
+"
+printf "  gh release create v${VERSION} --title 'v${VERSION}' --notes-file <(sed -n '/^## \[${VERSION}\]/,/^## \[/{/^## \[${VERSION}\]/d;/^## \[/d;p;}' CHANGELOG.md)
+"

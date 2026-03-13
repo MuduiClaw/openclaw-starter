@@ -10,13 +10,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_DIR="${HOME}/clawd"
 DRY_RUN=false
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-# BLUE='\033[0;34m'  # reserved
-BOLD='\033[1m'
-DIM='\033[2m'
-NC='\033[0m'
+RED='[0;31m'
+GREEN='[0;32m'
+YELLOW='[1;33m'
+# BLUE='[0;34m'  # reserved
+BOLD='[1m'
+DIM='[2m'
+NC='[0m'
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

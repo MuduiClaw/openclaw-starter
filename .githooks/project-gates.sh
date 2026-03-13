@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project-specific gates for openclaw-starter
+# Project-specific gates for ClawKing
 # Sourced by ~/clawd/.githooks/prepare-commit-msg after global gates
 # Available vars: $COMMIT_MSG_FILE, $COMMIT_MSG_LINE, $STAGED_FILES, $STAGED_COUNT
 set -euo pipefail

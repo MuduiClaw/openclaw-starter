@@ -4,11 +4,11 @@
 set -euo pipefail
 
 # ─── Colors ───
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+RED='[0;31m'
+GREEN='[0;32m'
+YELLOW='[0;33m'
+CYAN='[0;36m'
+NC='[0m'
 
 # ─── Find workspace root (look for SOUL.md or HEARTBEAT.md going up) ───
 find_workspace() {
@@ -74,7 +74,7 @@ fi
 # ─── Find workspace ───
 WORKSPACE=$(find_workspace) || {
   echo -e "${RED}❌ Cannot find workspace directory${NC}"
-  echo "  Run this script from the openclaw-starter project root"
+  echo "  Run this script from the ClawKing project root"
   exit 1
 }
 
