@@ -155,6 +155,36 @@ openclaw cron trigger <job>     # 手动触发
 
 > 💡 安装时选 **"Anthropic OAuth (用 Claude 订阅)"**，就是这个方案。Sonnet 作为默认模型，需要深度思考时手动切 Opus。
 
+## 三道防线：龙虾挂了也不怕
+
+AI Agent 系统会出问题——这不是如果，是一定。所以我们设计了三道防线，确保你不会手足无措：
+
+### 🛡️ 第一道：龙虾自愈（内置）
+
+Guardian 守护进程 24 小时盯着，进程挂了**秒级自动重启**。大多数问题你根本不会察觉。
+
+### 🔧 第二道：Claude 急救（推荐配置）
+
+在 [Claude 桌面客户端](https://claude.ai/download) 安装 ClawKing 的 MCP Bridge 服务器，让 Claude 能直接读取和操作你的 OpenClaw 配置。
+
+龙虾自愈修不好的时候，打开 Claude 说一句"帮我看看龙虾怎么了"——它能直接诊断和修复。
+
+> 💡 相当于给龙虾配了一个随叫随到的"AI 医生"。配置方式见 [MCP Bridge 指南](docs/guides/mcp-bridge.md)。
+
+### 💾 第三道：GitHub 备份（强烈推荐）
+
+绑定你的 GitHub 账号后，ClawKing 会**每小时自动备份**整个工作区到你的私有仓库。
+
+万一前两道防线都没兜住，你随时可以从备份恢复——最多丢一小时的数据。
+
+```bash
+# 绑定 GitHub（安装时会引导，也可以事后配置）
+gh auth login
+openclaw configure    # 选 "Backup" 配置备份仓库
+```
+
+> ⚠️ **强烈建议完成这一步。** 龙虾的记忆、人格、技能都在文件里，丢了就真的丢了。备份是最后的保险。
+
 ## 🦞 龙虾要养，越用越香
 
 ClawKing 不是装完就完了——它有**记忆系统**。
