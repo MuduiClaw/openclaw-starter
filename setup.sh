@@ -88,7 +88,7 @@ if $UNINSTALL; then
   # Unload LaunchAgents
   for plist in ai.openclaw.gateway ai.openclaw.guardian ai.openclaw.backup \
                ai.openclaw.log-rotate ai.openclaw.sessions-prune-cron \
-               ai.openclaw.caffeinate \
+               ai.openclaw.caffeinate ai.openclaw.watchdog \
                com.openclaw.infra-dashboard com.openclaw.mcp-bridge; do
     plist_path="${HOME}/Library/LaunchAgents/${plist}.plist"
     if [ -f "$plist_path" ]; then
@@ -1545,6 +1545,20 @@ fi
 else
   info "Dashboard skipped (--skip-dashboard)"
 fi
+
+# --- Gateway safety scripts ---
+if [ -f "${SCRIPT_DIR}/services/scripts/gateway-watchdog.sh" ]; then
+  WATCHDOG_DEST="${OPENCLAW_STATE}/scripts/gateway-watchdog.sh"
+  sed -e "s|__HOME__|${HOME}|g" \
+      "${SCRIPT_DIR}/services/scripts/gateway-watchdog.sh" > "$WATCHDOG_DEST"
+  chmod +x "$WATCHDOG_DEST"
+fi
+if [ -f "${SCRIPT_DIR}/services/scripts/openclaw-safe-restart.sh" ]; then
+  SAFE_RESTART_DEST="${OPENCLAW_STATE}/scripts/openclaw-safe-restart.sh"
+  cp "${SCRIPT_DIR}/services/scripts/openclaw-safe-restart.sh" "$SAFE_RESTART_DEST"
+  chmod +x "$SAFE_RESTART_DEST"
+fi
+progress_done "Gateway safety scripts (watchdog + safe-restart)"
 
 # --- LaunchAgents ---
 if ! $NO_LAUNCHAGENTS; then

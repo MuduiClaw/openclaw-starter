@@ -130,6 +130,14 @@
     //   "ask": "off"
     // },
 
+    // ⚠️ 危险命令黑名单 — 防止 AI 在 session 内杀掉自己的宿主进程
+    "denyCommands": [
+      "openclaw gateway restart",
+      "openclaw gateway stop",
+      "launchctl bootout",
+      "launchctl unload"
+    ],
+
     // Session 可见性 / Agent 间通信
     // "sessions": { "visibility": "all" },
     // "agentToAgent": { "enabled": true }

@@ -71,6 +71,7 @@
 5. **改基建前查教训** — `memory_search("lessons + 关键词")`。
 6. **文档先行** — 改代码前先改文档。
 7. **验证必须有执行证据** — stdout/stderr 片段，不接受纯文字"通过了"。
+8. **⛔ 禁止 gateway 自杀** — 永远不要执行 `openclaw gateway restart`、`openclaw gateway stop`、`launchctl bootout`、`launchctl unload`。这些命令会杀掉你自己的宿主进程，导致 gateway 永久下线。需要重启时用 `~/.openclaw/scripts/openclaw-safe-restart.sh`。
 
 ---
 
