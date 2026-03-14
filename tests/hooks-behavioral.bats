@@ -11,7 +11,7 @@ setup() {
   # Create a minimal git repo with our hooks
   mkdir -p "$SANDBOX"
   cd "$SANDBOX"
-  git init -q
+  git init -q -b main
   git config user.email "test@test.com"
   git config user.name "Test"
 
@@ -56,12 +56,14 @@ teardown() {
 }
 
 @test "hook blocks commit when shellcheck fails on .sh file" {
+  # Skip if shellcheck not installed (CI may not have it)
+  command -v shellcheck &>/dev/null || skip "shellcheck not installed"
   cd "$SANDBOX"
   # SC2164 (warning): Use 'cd ... || exit' in case cd fails
   printf '#!/bin/bash\ncd /somewhere\nls\n' > bad.sh
   git add bad.sh
   run env REVIEWED=1 git commit -m "feat: add bad script" 2>&1
-  # Should fail (shellcheck -S warning catches SC2086)
+  # Should fail (shellcheck -S warning catches SC2164)
   [ "$status" -ne 0 ]
   [[ "$output" == *"shellcheck"* ]] || [[ "$output" == *"PRE-COMMIT"* ]]
 }
