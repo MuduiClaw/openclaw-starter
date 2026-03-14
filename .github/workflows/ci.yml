@@ -19,6 +19,7 @@ jobs:
 
       - name: Shellcheck scripts
         run: |
+          command -v shellcheck || brew install shellcheck
           shellcheck --severity=warning \
             scripts/*.sh setup.sh sync-to-template.sh \
             workspace/scripts/*.sh .githooks/*.sh
