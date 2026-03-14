@@ -1,27 +1,4 @@
 #!/bin/bash
-# Auto-update CHANGELOG.md [Unreleased] section after each commit
-# Skip if: in rebase/merge, or the commit itself touches CHANGELOG.md
-
-# Avoid infinite loop: skip if this commit already touched CHANGELOG.md
-if git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | grep -qF "CHANGELOG.md"; then
-  exit 0
-fi
-
-# Skip during rebase/merge
-if [[ -d "$(git rev-parse --git-dir)/rebase-merge" ]] || \
-   [[ -d "$(git rev-parse --git-dir)/rebase-apply" ]] || \
-   [[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]]; then
-  exit 0
-fi
-
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-SCRIPT="${REPO_ROOT}/scripts/update-changelog.sh"
-
-if [[ -x "$SCRIPT" ]]; then
-  bash "$SCRIPT" 2>/dev/null
-  # Auto-amend the commit to include CHANGELOG update
-  if [[ -n "$(git diff --name-only -- CHANGELOG.md 2>/dev/null)" ]]; then
-    git add CHANGELOG.md
-    git commit --amend --no-edit --no-verify >/dev/null 2>&1
-  fi
-fi
+# Intentionally empty — changelog update moved to commit-msg hook.
+# Kept as placeholder to prevent accidental restoration.
+exit 0

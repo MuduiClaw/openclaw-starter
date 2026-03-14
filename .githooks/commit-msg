@@ -1,0 +1,24 @@
+#!/bin/bash
+# Auto-append to CHANGELOG.md [开发中] section from commit message.
+# Runs BEFORE commit is finalized — no amend needed, CHANGELOG goes in same commit.
+
+# Skip during rebase/merge
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null)"
+[[ -d "$GIT_DIR/rebase-merge" || -d "$GIT_DIR/rebase-apply" || -f "$GIT_DIR/MERGE_HEAD" ]] && exit 0
+
+# Read the commit message
+COMMIT_MSG_FILE="$1"
+[[ -f "$COMMIT_MSG_FILE" ]] || exit 0
+MSG=$(head -1 "$COMMIT_MSG_FILE")
+
+# Skip if commit already touches CHANGELOG (manual edit)
+if git diff --cached --name-only 2>/dev/null | grep -qF "CHANGELOG.md"; then
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+SCRIPT="${REPO_ROOT}/scripts/update-changelog.sh"
+
+[[ -x "$SCRIPT" ]] && bash "$SCRIPT" --msg "$MSG" 2>/dev/null
+
+exit 0
