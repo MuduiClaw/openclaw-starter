@@ -180,6 +180,91 @@ teardown() {
   [ "$trailer" = "$actual" ]
 }
 
+# ─── Gate 6: E2E awareness behavioral tests ───
+# Gate 6 tests need a remote to push to. We set up a bare repo as origin.
+
+_setup_remote() {
+  local bare="$BATS_TEST_TMPDIR/remote.git"
+  rm -rf "$bare"
+  git clone --bare "$SANDBOX" "$bare" 2>/dev/null
+  cd "$SANDBOX"
+  git remote remove origin 2>/dev/null || true
+  git remote add origin "$bare"
+}
+
+@test "Gate 6 blocks page.tsx change without e2e test" {
+  cd "$SANDBOX"
+  # Create a playwright config to trigger Gate 6
+  echo '{}' > playwright.config.ts
+  git add playwright.config.ts
+  REVIEWED=1 git commit -q -m "chore: add pw config" 2>/dev/null
+
+  _setup_remote
+
+  # Change a page file without e2e
+  mkdir -p app
+  echo "export default function Page() { return <div/>; }" > app/page.tsx
+  git add app/page.tsx
+  REVIEWED=1 git commit -q -m "feat: add home page" 2>/dev/null
+
+  # Push should fail Gate 6
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  echo "# STATUS: $status" >&3
+  [[ "$output" == *"Gate 6"* ]] || [[ "$output" == *"E2E"* ]]
+  [[ "$status" -ne 0 ]]
+}
+
+@test "Gate 6 passes with [e2e-ack] exemption" {
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  git add playwright.config.ts
+  REVIEWED=1 git commit -q -m "chore: add pw config" 2>/dev/null
+
+  _setup_remote
+
+  mkdir -p app
+  echo "export default function Page() { return <div/>; }" > app/page.tsx
+  git add app/page.tsx
+  REVIEWED=1 git commit -q -m "feat: add home page [e2e-ack]" 2>/dev/null
+
+  run git push origin main 2>&1
+  [[ "$output" != *"❌"*"Gate 6"* ]]
+}
+
+@test "Gate 6 warns when unit tests present but no e2e" {
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  echo '{}' > vitest.config.ts
+  git add playwright.config.ts vitest.config.ts
+  REVIEWED=1 git commit -q -m "chore: add configs" 2>/dev/null
+
+  _setup_remote
+
+  mkdir -p app src/__tests__
+  echo "export default function Page() { return <div/>; }" > app/page.tsx
+  echo "test('x', () => {})" > src/__tests__/page.spec.ts
+  git add app/page.tsx src/__tests__/page.spec.ts
+  REVIEWED=1 git commit -q -m "feat: add page with unit test" 2>/dev/null
+
+  run git push origin main 2>&1
+  [[ "$output" == *"warning only"* ]] || [[ "$output" == *"⚠️"* ]]
+  [[ "$output" != *"❌"*"Gate 6"* ]]
+}
+
+@test "Gate 6 skips when no playwright.config.ts" {
+  cd "$SANDBOX"
+  _setup_remote
+
+  mkdir -p app
+  echo "export default function Page() { return <div/>; }" > app/page.tsx
+  git add app/page.tsx
+  REVIEWED=1 git commit -q -m "feat: add page" 2>/dev/null
+
+  run git push origin main 2>&1
+  [[ "$output" != *"Gate 6"* ]]
+}
+
 @test "amend regenerates tree-hash trailer" {
   cd "$SANDBOX"
   printf '#!/bin/bash\necho "v1"\n' > app.sh

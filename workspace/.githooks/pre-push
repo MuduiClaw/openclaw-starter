@@ -265,6 +265,69 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     fi
   fi
 
+  # Gate 6: E2E awareness for page-level changes
+  # Only triggers for Web App projects (has playwright.config.ts)
+  # Only checks page.tsx/layout.tsx/pages/**/*.tsx/src/App.tsx changes
+  if [[ "${SKIP_E2E_GATE:-0}" != "1" ]]; then
+    g6_has_pw=0
+    # Check for playwright config in repo root or monorepo apps/*/
+    if [[ -f "$repo_root/playwright.config.ts" ]]; then
+      g6_has_pw=1
+    else
+      for pw_cfg in "$repo_root"/apps/*/playwright.config.ts; do
+        [[ -f "$pw_cfg" ]] && { g6_has_pw=1; break; }
+      done
+    fi
+
+    if [[ $g6_has_pw -eq 1 ]]; then
+      g6_has_page_changes=0
+      g6_has_e2e=0
+
+      while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        # Page-level file?
+        if echo "$f" | grep -qE '(^|/)page\.(tsx|ts|jsx|js)$|(^|/)layout\.(tsx|ts|jsx|js)$|pages/[^_\[].+\.(tsx|jsx)$|src/App\.(tsx|jsx)$'; then
+          g6_has_page_changes=1
+        fi
+        # E2E test file?
+        if echo "$f" | grep -qE '(^|/)e2e/.*\.spec\.(ts|js)$'; then
+          g6_has_e2e=1
+        fi
+      done <<< "$(git diff --name-only "$range" 2>/dev/null || true)"
+
+      if [[ $g6_has_page_changes -eq 1 ]]; then
+        # Check for [e2e-ack] in any commit message
+        g6_has_ack=0
+        if git log --format='%B' "$range" 2>/dev/null | grep -qF '[e2e-ack]'; then
+          g6_has_ack=1
+        fi
+
+        if [[ $g6_has_e2e -eq 1 ]]; then
+          echo "  ✅ [Gate 6 E2E] Page changes with e2e tests — good"
+          _tel hook-e2e pass
+        elif [[ $g6_has_ack -eq 1 ]]; then
+          echo "  ✅ [Gate 6 E2E] Page changes with [e2e-ack] exemption"
+          _tel hook-e2e pass
+        elif [[ $g4_has_tests -eq 1 ]]; then
+          # Has unit tests but no e2e — warn only
+          echo "  ⚠️  [Gate 6 E2E] Page-level changes without e2e tests (unit tests found — warning only)"
+          echo "     Consider adding e2e tests in e2e/*.spec.ts, or use [e2e-ack] to acknowledge"
+          _tel hook-e2e pass
+        else
+          # No tests at all for page changes
+          if [[ $WORKSPACE_MODE -eq 1 ]]; then
+            echo "  ⚠️  [Gate 6 E2E] Page-level changes without e2e tests (workspace — warning only)"
+          else
+            echo "  ❌ [Gate 6 E2E] Page-level changes without e2e tests"
+            echo "     Add e2e tests in e2e/*.spec.ts, or [e2e-ack] to exempt"
+            _tel hook-e2e block
+            failed=1
+          fi
+        fi
+      fi
+    fi
+  fi
+
 done
 
 # ─── Project-specific sync (warn only, never block push) ───
