@@ -427,6 +427,35 @@ EOF
   [[ "$status" -ne 0 ]]
 }
 
+@test "Gate 7c blocks visually similar screenshots (same page, different timestamp)" {
+  command -v magick >/dev/null 2>&1 || skip "ImageMagick not available"
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  git add playwright.config.ts
+  REVIEWED=1 git commit -q -m "chore: add pw config" 2>/dev/null
+
+  _setup_remote
+
+  mkdir -p tasks docs/acceptance/visual-dup
+  cat > tasks/visual-dup.md << 'EOF'
+# Spec: Visual Dup
+- **Status**: delivered
+EOF
+  # Create 3 screenshots: 2 are visually near-identical (1 pixel diff), 1 is different
+  # E01 and E02 have different hashes but RMSE < 0.02 (visually same page)
+  magick -size 200x200 xc:white docs/acceptance/visual-dup/E01-home.png
+  magick -size 200x200 xc:white -fill "rgb(255,255,254)" -draw "point 0,0" docs/acceptance/visual-dup/E02-home-again.png
+  magick -size 200x200 xc:blue docs/acceptance/visual-dup/E03-settings.png
+  git add tasks/visual-dup.md docs/acceptance/visual-dup/
+  REVIEWED=1 git commit -q -m "feat: deliver visual-dup [spec:visual-dup]" 2>/dev/null
+
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  [[ "$output" == *"视觉重复"* ]]
+  [[ "$output" == *"RMSE"* ]]
+  [[ "$status" -ne 0 ]]
+}
+
 @test "Gate 7 passes when all screenshots are unique" {
   cd "$SANDBOX"
   echo '{}' > playwright.config.ts

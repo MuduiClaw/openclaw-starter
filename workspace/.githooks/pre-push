@@ -383,8 +383,42 @@ while read -r local_ref local_sha remote_ref remote_sha; do
           _tel hook-screenshot-dedup warn
           failed=1
         else
-          echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots ($unique_count unique)"
-          _tel hook-screenshot pass
+          # Gate 7c: Visual similarity — catch same page screenshotted at different times
+          visual_dup=0
+          if command -v compare >/dev/null 2>&1 && [[ $screenshot_count -ge 2 ]] && [[ $screenshot_count -le 20 ]]; then
+            pngs=()
+            while IFS= read -r f; do
+              [[ -n "$f" ]] && pngs+=("$f")
+            done < <(find "$repo_root/$acc_dir" -name "*.png" | sort)
+            for ((i=0; i<${#pngs[@]}; i++)); do
+              for ((j=i+1; j<${#pngs[@]}; j++)); do
+                # compare requires same dimensions — skip if different
+                dims_i=$(identify -format "%wx%h" "${pngs[$i]}" 2>/dev/null || echo "0x0")
+                dims_j=$(identify -format "%wx%h" "${pngs[$j]}" 2>/dev/null || echo "0x0")
+                [[ "$dims_i" != "$dims_j" ]] && continue
+                # RMSE normalized to 0-1: < 0.02 means visually identical
+                cmp_out=$(compare -metric RMSE "${pngs[$i]}" "${pngs[$j]}" /dev/null 2>&1) || true
+                rmse=$(echo "$cmp_out" | tr -d '\n' | sed -n 's/.*(\([0-9.]*\)).*/\1/p')
+                # Skip if compare failed (invalid images) or no parseable output
+                [[ -z "$rmse" ]] && continue
+                # Compare as integers: rmse * 10000 < 200 means < 0.02
+                rmse_int=$(printf '%.0f' "$(echo "$rmse * 10000" | bc 2>/dev/null || echo "10000")" 2>/dev/null)
+                [[ -z "$rmse_int" ]] && continue
+                if [[ $rmse_int -lt 200 ]]; then
+                  echo "  ⚠️  [Gate 7] 视觉重复: $(basename "${pngs[$i]}") ≈ $(basename "${pngs[$j]}") (RMSE=$rmse)"
+                  visual_dup=1
+                fi
+              done
+            done
+          fi
+          if [[ $visual_dup -eq 1 ]]; then
+            echo "     同一页面不同时间截的图也算重复——每张截图必须对应不同的验证场景"
+            _tel hook-screenshot-visual-dedup warn
+            failed=1
+          else
+            echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots ($unique_count unique)"
+            _tel hook-screenshot pass
+          fi
         fi
       fi
     done
