@@ -350,8 +350,9 @@ EOF
 # Spec: My Feature
 - **Status**: delivered
 EOF
-  touch docs/acceptance/my-feature/E01-home.png
-  touch docs/acceptance/my-feature/E02-about.png
+  # Create distinct screenshots (different content so dedup gate passes)
+  printf '\x89PNG-home' > docs/acceptance/my-feature/E01-home.png
+  printf '\x89PNG-about' > docs/acceptance/my-feature/E02-about.png
   git add tasks/my-feature.md docs/acceptance/my-feature/
   REVIEWED=1 git commit -q -m "feat: deliver my-feature with screenshots [spec:my-feature]" 2>/dev/null
 
@@ -393,5 +394,62 @@ EOF
   # Should detect delivered even on line 10
   [[ "$output" == *"Gate 7"* ]]
   [[ "$output" == *"no screenshots"* ]] || [[ "$output" == *"⚠️"* ]]
+  [[ "$status" -eq 0 ]]
+}
+
+@test "Gate 7 blocks duplicate screenshots (dedup gate)" {
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  git add playwright.config.ts
+  REVIEWED=1 git commit -q -m "chore: add pw config" 2>/dev/null
+
+  _setup_remote
+
+  mkdir -p tasks docs/acceptance/dup-spec
+  cat > tasks/dup-spec.md << 'EOF'
+# Spec: Dup Spec
+- **Status**: delivered
+EOF
+  # Create 4 screenshots but 2 are identical (copy of same content)
+  printf '\x89PNG-page-a' > docs/acceptance/dup-spec/E01-home.png
+  printf '\x89PNG-page-a' > docs/acceptance/dup-spec/E02-about.png
+  printf '\x89PNG-page-b' > docs/acceptance/dup-spec/E03-settings.png
+  printf '\x89PNG-page-c' > docs/acceptance/dup-spec/E04-profile.png
+  git add tasks/dup-spec.md docs/acceptance/dup-spec/
+  REVIEWED=1 git commit -q -m "feat: deliver dup-spec [spec:dup-spec]" 2>/dev/null
+
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  [[ "$output" == *"Gate 7"* ]]
+  [[ "$output" == *"duplicates"* ]]
+  [[ "$output" == *"糊弄"* ]]
+  # Should block the push
+  [[ "$status" -ne 0 ]]
+}
+
+@test "Gate 7 passes when all screenshots are unique" {
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  git add playwright.config.ts
+  REVIEWED=1 git commit -q -m "chore: add pw config" 2>/dev/null
+
+  _setup_remote
+
+  mkdir -p tasks docs/acceptance/unique-spec
+  cat > tasks/unique-spec.md << 'EOF'
+# Spec: Unique Spec
+- **Status**: delivered
+EOF
+  printf '\x89PNG-page-1' > docs/acceptance/unique-spec/E01-home.png
+  printf '\x89PNG-page-2' > docs/acceptance/unique-spec/E02-about.png
+  printf '\x89PNG-page-3' > docs/acceptance/unique-spec/E03-settings.png
+  git add tasks/unique-spec.md docs/acceptance/unique-spec/
+  REVIEWED=1 git commit -q -m "feat: deliver unique-spec [spec:unique-spec]" 2>/dev/null
+
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  [[ "$output" == *"Gate 7"* ]]
+  [[ "$output" == *"✅"* ]]
+  [[ "$output" == *"unique"* ]]
   [[ "$status" -eq 0 ]]
 }

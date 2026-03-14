@@ -366,8 +366,26 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         echo "     Then commit screenshots to docs/acceptance/$slug/"
         _tel hook-screenshot warn
       else
-        echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots found"
-        _tel hook-screenshot pass
+        # Gate 7b: Dedup check — catch identical screenshots used to fake coverage
+        unique_count=$screenshot_count
+        if command -v md5sum >/dev/null 2>&1; then
+          unique_count=$(find "$repo_root/$acc_dir" -name "*.png" -exec md5sum {} \; | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
+        elif command -v shasum >/dev/null 2>&1; then
+          unique_count=$(find "$repo_root/$acc_dir" -name "*.png" -exec shasum {} \; | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
+        elif command -v md5 >/dev/null 2>&1; then
+          unique_count=$(find "$repo_root/$acc_dir" -name "*.png" -exec md5 -q {} \; | sort -u | wc -l | tr -d ' ')
+        fi
+        dup_count=$((screenshot_count - unique_count))
+
+        if [[ $dup_count -gt 0 ]]; then
+          echo "  ⚠️  [Gate 7] Spec '$slug': $screenshot_count screenshots but $dup_count are duplicates ($unique_count unique)"
+          echo "     截图不能用一样的图糊弄——每个截图必须对应不同的验证场景"
+          _tel hook-screenshot-dedup warn
+          failed=1
+        else
+          echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots ($unique_count unique)"
+          _tel hook-screenshot pass
+        fi
       fi
     done
   fi
@@ -388,6 +406,34 @@ if [[ -x "$repo_root/scripts/sync-docs.sh" ]]; then
       echo "  ⚠️  [Docs] $(basename "$acc") contains unfilled TODOs"
     fi
   done
+fi
+
+# ─── Gate 8: Production verification (auto-trigger on deployment files) ───
+VERIFY_PROD="${WORKSPACE_ROOT}/scripts/verify-production.sh"
+if [[ -x "$VERIFY_PROD" ]]; then
+  deploy_detected=0
+  for f in "${changed_files[@]+"${changed_files[@]}"}"; do
+    case "$f" in
+      next.config.*|wrangler.toml|Dockerfile|.github/workflows/*.yml) deploy_detected=1; break ;;
+    esac
+  done
+  if [[ $deploy_detected -eq 1 ]]; then
+    echo ""
+    echo "  🔍 [Gate 8] Deployment files detected — running production verification (15s timeout)..."
+    if perl -e 'alarm 15; exec @ARGV' -- bash "$VERIFY_PROD" "$repo_root" 2>&1; then
+      echo "  ✅ [Gate 8] Production verification passed"
+    else
+      exit_code=$?
+      if [[ $exit_code -eq 142 ]]; then
+        echo "  ⚠️  [Gate 8] Production verification timed out (>15s) — proceeding"
+      elif [[ $WORKSPACE_MODE -eq 1 ]]; then
+        echo "  ⚠️  [Gate 8] Production verification failed (workspace mode: warn only)"
+      else
+        echo "  ❌ [Gate 8] Production verification failed"
+        failed=1
+      fi
+    fi
+  fi
 fi
 
 if [[ $failed -eq 1 ]]; then

@@ -35,6 +35,29 @@
 
 - 更新日志改增量追加模式，不再覆盖手写内容
 
+
+### ✨ 新功能（自动记录）
+
+- screenshot dedup — block identical screenshots in spec delivery
+- add Gate 6 E2E awareness + 4 bats behavioral tests
+- add 12 behavioral hook tests (sandbox git repo execution)
+
+### 🐛 修复（自动记录）
+
+- Oracle R1 — Gate 6 vitest detection + Gate 7 simplify + deep-status bats test
+- Oracle audit — close 3 critical + 2 medium gate vulnerabilities
+- chmod +x sync-to-template.sh + sanitize private ref
+- repair all 15 bats failures + add CI
+
+### 📖 文档（自动记录）
+
+- 重写更新日志 — 全中文、用户友好、讲人话
+- AGENTS.md 自动教训沉淀
+
+### 🔧 维护（自动记录）
+
+- add 3 behavioral tests for screenshot verification gate
+
 ---
 
 ## v1.3.1 — 2026-03-11
