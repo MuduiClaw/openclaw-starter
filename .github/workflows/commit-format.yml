@@ -1,0 +1,5 @@
+name: Commit Format
+on: [push, pull_request]
+jobs:
+  check:
+    uses: MuduiClaw/clawd-workspace/.github/workflows/commit-format.yml@main

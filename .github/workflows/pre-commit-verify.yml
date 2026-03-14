@@ -1,0 +1,5 @@
+name: Pre-commit Gate Verify
+on: [push, pull_request]
+jobs:
+  verify:
+    uses: MuduiClaw/clawd-workspace/.github/workflows/pre-commit-verify.yml@main
