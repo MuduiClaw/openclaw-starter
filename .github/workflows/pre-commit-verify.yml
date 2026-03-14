@@ -1,5 +1,89 @@
 name: Pre-commit Gate Verify
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
-  verify:
-    uses: MuduiClaw/clawd-workspace/.github/workflows/pre-commit-verify.yml@main
+  verify-precommit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check pre-commit gate trailers (v2 tree-hash)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          else
+            before="${{ github.event.before }}"
+            if [[ "$before" == "0000000000000000000000000000000000000000" ]]; then
+              range="HEAD~1..HEAD"
+            else
+              range="${before}..HEAD"
+            fi
+          fi
+
+          echo "Checking commits in range: $range"
+          echo "---"
+
+          violations=0
+          total=0
+
+          while IFS= read -r sha; do
+            [[ -z "$sha" ]] && continue
+            total=$((total + 1))
+            subject="$(git log -1 --format='%s' "$sha")"
+
+            # Skip auto-generated commits (no human review needed)
+            case "$subject" in
+              Merge\ *|Revert\ \"*|backup:*|spec:*)
+                echo "⏭  $sha — $subject (auto-commit, skipped)"
+                continue ;;
+            esac
+
+            body="$(git log -1 --format='%B' "$sha")"
+            trailer_val=$(echo "$body" | sed -n 's/^Pre-commit-gate: //p' | tail -1)
+
+            if [[ -z "$trailer_val" ]]; then
+              echo "❌ $sha — $subject"
+              echo "   Missing Pre-commit-gate trailer (hooks bypassed with --no-verify?)"
+              violations=$((violations + 1))
+            elif [[ "$trailer_val" == "passed" ]]; then
+              echo "❌ $sha — $subject"
+              echo "   Legacy 'passed' trailer — v2 requires tree-hash. Amend to regenerate."
+              violations=$((violations + 1))
+            else
+              # Verify tree-hash matches the commit's actual tree
+              actual_tree=$(git rev-parse "${sha}^{tree}" 2>/dev/null || true)
+              if [[ "$trailer_val" == "$actual_tree" ]]; then
+                echo "✅ $sha — $subject (tree: ${actual_tree:0:8})"
+              else
+                echo "❌ $sha — $subject"
+                echo "   Tree-hash mismatch: trailer=${trailer_val:0:12} actual=${actual_tree:0:12}"
+                echo "   Trailer was forged or commit modified after hook."
+                violations=$((violations + 1))
+              fi
+            fi
+          done < <(git log --format='%H' --reverse "$range" 2>/dev/null || true)
+
+          echo "---"
+          echo "Checked $total commits, $violations violation(s)"
+
+          if [[ $violations -gt 0 ]]; then
+            echo ""
+            echo "⛔ PRE-COMMIT GATE VIOLATION (v2 tree-hash verification)"
+            echo ""
+            echo "  $violations commit(s) failed gate verification."
+            echo ""
+            echo "  To fix: amend each violating commit without --no-verify"
+            echo "  git rebase -i <base> and re-commit to regenerate trailer"
+            echo ""
+            exit 1
+          fi

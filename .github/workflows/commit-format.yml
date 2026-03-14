@@ -1,5 +1,79 @@
 name: Commit Format
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
-  check:
-    uses: MuduiClaw/clawd-workspace/.github/workflows/commit-format.yml@main
+  conventional-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check conventional commit format
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Allowed types: https://www.conventionalcommits.org/
+          TYPES="feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert|init|wip|i18n"
+          PATTERN="^(${TYPES})(\(.+\))?(!)?: .+"
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          else
+            before="${{ github.event.before }}"
+            if [[ "$before" == "0000000000000000000000000000000000000000" ]]; then
+              range="HEAD~1..HEAD"
+            else
+              range="${before}..HEAD"
+            fi
+          fi
+
+          echo "Checking commit format in range: $range"
+          echo "Pattern: $PATTERN"
+          echo "---"
+
+          violations=0
+          total=0
+
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            sha="${line%% *}"
+            subject="${line#* }"
+            total=$((total + 1))
+
+            # Skip auto-generated commits
+            case "$subject" in
+              Merge\ *|Revert\ \"*|backup:*|journal:*|spec:*|lesson:*)
+                echo "⏭  $subject (auto-commit, skipped)"
+                continue ;;
+            esac
+
+            if echo "$subject" | grep -Eq "$PATTERN"; then
+              echo "✅ $subject"
+            else
+              echo "❌ $subject"
+              echo "   Expected format: type(scope): description"
+              echo "   Types: $TYPES"
+              violations=$((violations + 1))
+            fi
+          done < <(git log --format='%H %s' --reverse "$range" 2>/dev/null || true)
+
+          echo "---"
+          echo "Checked $total commits, $violations violation(s)"
+
+          if [[ $violations -gt 0 ]]; then
+            echo ""
+            echo "⛔ COMMIT FORMAT VIOLATION"
+            echo ""
+            echo "  $violations commit(s) don't follow conventional commit format."
+            echo "  Expected: type(scope): description"
+            echo "  Examples: feat: add user auth | fix(api): handle null response | chore: update deps"
+            echo ""
+            exit 1
+          fi
