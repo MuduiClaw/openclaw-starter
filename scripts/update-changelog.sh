@@ -115,22 +115,26 @@ if $DRY_RUN; then
 fi
 
 # --- Insert before first --- after [开发中] ---
+blkfile="${CHANGELOG}.blk"
+printf '%s\n' "$block" > "$blkfile"
+
 if grep -q '^## \[开发中\]\|^## \[Unreleased\]' "$CHANGELOG" 2>/dev/null; then
-  awk -v blk="$block" '
+  awk -v bf="$blkfile" '
     /^## \[开发中\]/ || /^## \[Unreleased\]/ { in_dev=1 }
     in_dev && /^---$/ {
-      printf "%s\n", blk
+      while ((getline line < bf) > 0) print line
+      close(bf)
       in_dev=0
     }
     { print }
   ' "$CHANGELOG" > "${CHANGELOG}.tmp"
   mv "${CHANGELOG}.tmp" "$CHANGELOG"
 else
-  # No section — create
   tmp="${CHANGELOG}.tmp"
-  { echo "## [开发中]"; echo "$block"; echo ""; echo "---"; echo ""; cat "$CHANGELOG"; } > "$tmp"
+  { echo "## [开发中]"; cat "$blkfile"; echo ""; echo "---"; echo ""; cat "$CHANGELOG"; } > "$tmp"
   mv "$tmp" "$CHANGELOG"
 fi
+rm -f "$blkfile"
 
 git rev-parse HEAD > "$CURSOR_FILE"
 success "已追加 $count 条到 [开发中]"
