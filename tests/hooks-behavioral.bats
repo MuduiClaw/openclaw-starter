@@ -280,3 +280,112 @@ _setup_remote() {
   [ "$new_trailer" = "$actual" ]
   [ "$new_trailer" != "$old_trailer" ]
 }
+
+# ─── Gate 7: Spec delivery screenshot verification ───
+
+@test "Gate 7 warns when spec delivered without screenshots" {
+  cd "$SANDBOX"
+  # Setup pw + e2e first
+  echo '{}' > playwright.config.ts
+  mkdir -p e2e
+  cat > e2e/smoke.spec.ts << 'EOF'
+import { test, expect } from "@playwright/test";
+test("home renders", async ({ page }) => {
+  await page.goto("/");
+});
+test("about renders", async ({ page }) => {
+  await page.goto("/about");
+});
+EOF
+  git add playwright.config.ts e2e/smoke.spec.ts
+  REVIEWED=1 git commit -q -m "chore: add e2e" 2>/dev/null
+
+  # Setup remote BEFORE the delivery commit
+  _setup_remote
+
+  # Now make the delivery commit (this is what gets pushed)
+  mkdir -p tasks
+  cat > tasks/my-feature.md << 'EOF'
+# Spec: My Feature
+- **Status**: delivered
+EOF
+  git add tasks/my-feature.md
+  REVIEWED=1 git commit -q -m "feat: deliver my-feature [spec:my-feature]" 2>/dev/null
+
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  # Should warn about missing screenshots
+  [[ "$output" == *"Gate 7"* ]]
+  [[ "$output" == *"no screenshots"* ]] || [[ "$output" == *"⚠️"* ]]
+  # Should NOT block (warn only)
+  [[ "$status" -eq 0 ]]
+}
+
+@test "Gate 7 passes when spec delivered with screenshots" {
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  mkdir -p e2e
+  cat > e2e/smoke.spec.ts << 'EOF'
+import { test, expect } from "@playwright/test";
+test("home renders", async ({ page }) => {
+  await page.goto("/");
+});
+test("about renders", async ({ page }) => {
+  await page.goto("/about");
+});
+EOF
+  git add playwright.config.ts e2e/smoke.spec.ts
+  REVIEWED=1 git commit -q -m "chore: add e2e scaffold" 2>/dev/null
+
+  # Remote BEFORE delivery commit
+  _setup_remote
+
+  mkdir -p tasks docs/acceptance/my-feature
+  cat > tasks/my-feature.md << 'EOF'
+# Spec: My Feature
+- **Status**: delivered
+EOF
+  touch docs/acceptance/my-feature/E01-home.png
+  touch docs/acceptance/my-feature/E02-about.png
+  git add tasks/my-feature.md docs/acceptance/my-feature/
+  REVIEWED=1 git commit -q -m "feat: deliver my-feature with screenshots [spec:my-feature]" 2>/dev/null
+
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  [[ "$output" == *"Gate 7"* ]]
+  [[ "$output" == *"✅"*"Gate 7"* ]]
+  [[ "$status" -eq 0 ]]
+}
+
+@test "Gate 7 warns when screenshot count < e2e test count" {
+  cd "$SANDBOX"
+  echo '{}' > playwright.config.ts
+  mkdir -p e2e
+  cat > e2e/smoke.spec.ts << 'EOF'
+import { test, expect } from "@playwright/test";
+test("home renders", async ({ page }) => { await page.goto("/"); });
+test("about renders", async ({ page }) => { await page.goto("/about"); });
+test("settings renders", async ({ page }) => { await page.goto("/settings"); });
+EOF
+  git add playwright.config.ts e2e/smoke.spec.ts
+  REVIEWED=1 git commit -q -m "chore: add e2e scaffold" 2>/dev/null
+
+  # Remote BEFORE delivery
+  _setup_remote
+
+  mkdir -p tasks docs/acceptance/my-feature
+  cat > tasks/my-feature.md << 'EOF'
+# Spec: My Feature
+- **Status**: delivered
+EOF
+  # Only 1 screenshot for 3 tests
+  touch docs/acceptance/my-feature/E01-home.png
+  git add tasks/my-feature.md docs/acceptance/my-feature/
+  REVIEWED=1 git commit -q -m "feat: deliver partial screenshots [spec:my-feature]" 2>/dev/null
+
+  run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
+  [[ "$output" == *"Gate 7"* ]]
+  [[ "$output" == *"incomplete"* ]] || [[ "$output" == *"⚠️"* ]]
+  [[ "$status" -eq 0 ]]
+}

@@ -328,6 +328,62 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     fi
   fi
 
+  # Gate 7: Spec delivery requires acceptance screenshots
+  # When a spec is marked delivered (status change in tasks/*.md),
+  # verify docs/acceptance/<slug>/ has screenshots OR e2e tests capture them
+  g7_has_pw=0
+  if [[ -f "$repo_root/playwright.config.ts" ]]; then
+    g7_has_pw=1
+  else
+    for pw_cfg in "$repo_root"/apps/*/playwright.config.ts; do
+      [[ -f "$pw_cfg" ]] && { g7_has_pw=1; break; }
+    done
+  fi
+  if [[ "${SKIP_SCREENSHOT_GATE:-0}" != "1" ]] && [[ $g7_has_pw -eq 1 ]]; then
+    # Check if any commit in this push marks a spec as delivered
+    delivered_slugs=()
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      if echo "$f" | grep -qE '^tasks/.*\.md$'; then
+        slug=$(basename "$f" .md)
+        # Check if the file content has "delivered" status
+        if git show "$local_sha:$f" 2>/dev/null | head -5 | grep -qi 'delivered'; then
+          delivered_slugs+=("$slug")
+        fi
+      fi
+    done <<< "$(git diff --name-only "$range" 2>/dev/null || true)"
+
+    for slug in "${delivered_slugs[@]+"${delivered_slugs[@]}"}"; do
+      acc_dir="docs/acceptance/$slug"
+      screenshot_count=0
+      if [[ -d "$repo_root/$acc_dir" ]]; then
+        screenshot_count=$(find "$repo_root/$acc_dir" -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
+      fi
+
+      # Count e2e test count for comparison
+      e2e_test_count=0
+      for e2e_dir in "$repo_root"/e2e "$repo_root"/apps/*/e2e; do
+        [[ -d "$e2e_dir" ]] || continue
+        tc=$(grep -r "test(" "$e2e_dir" --include="*.spec.ts" --include="*.spec.js" 2>/dev/null | grep -v "test.fixme\|test.skip\|test.describe" | wc -l | tr -d ' ')
+        e2e_test_count=$((e2e_test_count + tc))
+      done
+
+      if [[ $screenshot_count -eq 0 ]] && [[ $e2e_test_count -gt 0 ]]; then
+        echo "  ⚠️  [Gate 7] Spec '$slug' marked delivered but docs/acceptance/$slug/ has no screenshots"
+        echo "     Run: PW_SCREENSHOTS=on npx playwright test"
+        echo "     Then commit screenshots to docs/acceptance/$slug/"
+        _tel hook-screenshot warn
+        # Warn only — CI will also verify via PW_SCREENSHOTS=on
+      elif [[ $screenshot_count -gt 0 ]] && [[ $screenshot_count -lt $e2e_test_count ]]; then
+        echo "  ⚠️  [Gate 7] Spec '$slug': $screenshot_count screenshots < $e2e_test_count e2e tests — may be incomplete"
+        _tel hook-screenshot warn
+      elif [[ $screenshot_count -ge $e2e_test_count ]] && [[ $e2e_test_count -gt 0 ]]; then
+        echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count screenshots ≥ $e2e_test_count e2e tests"
+        _tel hook-screenshot pass
+      fi
+    done
+  fi
+
 done
 
 # ─── Project-specific sync (warn only, never block push) ───
