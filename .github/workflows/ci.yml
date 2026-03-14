@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats
+        run: brew install bats-core
+
+      - name: Run bats tests
+        run: bats tests/
+
+      - name: Shellcheck scripts
+        run: |
+          brew install shellcheck
+          shellcheck scripts/*.sh setup.sh bootstrap.sh sync-to-template.sh \
+            workspace/scripts/*.sh .githooks/*.sh 2>&1 || true

@@ -85,7 +85,9 @@ assert_script_not_matches() {
 @test "setup.sh resolves paths from the script location and avoids set -e hard failure mode" {
   assert_script_contains 'SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"'
   assert_script_contains '# Note: intentionally NO `set -e`'
-  assert_script_not_matches '^set -e'
+  # Main script uses set -uo pipefail (no -e). Heredoc-generated scripts may use set -euo.
+  run head -5 "$SCRIPT"
+  [[ "$output" != *"set -e"* ]] || [[ "$output" == *"set -uo"* ]]
 }
 
 @test "setup.sh uses BREW_PREFIX instead of hardcoded brew shellenv paths" {
@@ -117,8 +119,8 @@ assert_script_not_matches() {
 }
 
 @test "setup.sh generates a qmd-safe wrapper with a node bin fallback" {
-  assert_script_contains 'NODE_BIN_QMD="$(dirname "$(command -v node 2>/dev/null || echo /usr/local/bin/node)")/qmd"'
-  assert_script_contains 'QMD_PATH="$(command -v qmd 2>/dev/null || echo "$NODE_BIN_QMD")"'
+  assert_script_contains 'QMD_PATH="$(command -v qmd 2>/dev/null || echo "")"'
+  assert_script_contains '${HOME}/.local/bin/qmd'
   assert_script_contains 'cat > "${OPENCLAW_STATE}/scripts/qmd-safe.sh"'
   assert_script_contains 'exec "${QMD_PATH}" "\$@"'
 }

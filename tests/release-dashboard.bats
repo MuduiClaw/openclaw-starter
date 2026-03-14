@@ -84,8 +84,7 @@ fi
 
 if [ "${1-}" = "-e" ]; then
   script="${2-}"
-  package_json="${script#*require('}"
-  package_json="${package_json%%').version*}"
+  package_json=$(printf '%s' "$script" | sed "s/.*require('//;s/').*//" )
   sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$package_json"
   exit 0
 fi
