@@ -78,7 +78,7 @@ Node.js、Homebrew 等依赖全部由安装脚本自动处理。
 ## 安装过程
 
 ```
-🦞 ClawKing 🦞 v1.3.1
+🦞 ClawKing 🦞 v1.4.0
 
 [1/3] 依赖安装
      OpenClaw ✓  Codex ✓  Claude Code ✓  Gemini CLI ✓

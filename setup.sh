@@ -62,6 +62,27 @@ progress_done() {
 " "$1"
 }
 
+get_dashboard_release_url() {
+  # Try ClawKing repo first (dashboard-v* tags), then infra-dashboard repo (v* tags)
+  local tag=""
+  if command -v gh &>/dev/null; then
+    # Source 1: ClawKing repo dashboard releases
+    tag=$(gh api repos/MuduiClaw/ClawKing/releases --jq '[.[] | select(.tag_name | startswith("dashboard-"))][0].tag_name' 2>/dev/null || echo "")
+    if [[ -n "$tag" ]]; then
+      echo "https://github.com/MuduiClaw/ClawKing/releases/download/${tag}/infra-dashboard-standalone.tar.gz"
+      return
+    fi
+    # Source 2: infra-dashboard repo releases
+    tag=$(gh api repos/MuduiClaw/infra-dashboard/releases/latest --jq '.tag_name' 2>/dev/null || echo "")
+    if [[ -n "$tag" ]]; then
+      echo "https://github.com/MuduiClaw/infra-dashboard/releases/download/${tag}/infra-dashboard-standalone.tar.gz"
+      return
+    fi
+  fi
+  # Fallback
+  echo "https://github.com/MuduiClaw/ClawKing/releases/latest/download/infra-dashboard-standalone.tar.gz"
+}
+
 # --- Parse Flags ---
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -185,7 +206,7 @@ fi
 # ============================================================================
 if $UPDATE_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
-  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/ClawKing/releases/latest/download/infra-dashboard-standalone.tar.gz"
+  DASHBOARD_RELEASE_URL="$(get_dashboard_release_url)"
 
   step "📦" "Updating infra-dashboard"
 
@@ -1473,7 +1494,7 @@ step "3/3" "启动 (Launch)"
 # --- infra-dashboard (pre-built standalone from GitHub Release) ---
 if ! $SKIP_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
-  DASHBOARD_RELEASE_URL="https://github.com/MuduiClaw/ClawKing/releases/latest/download/infra-dashboard-standalone.tar.gz"
+  DASHBOARD_RELEASE_URL="$(get_dashboard_release_url)"
 
   if [ ! -d "$DASHBOARD_DIR" ] || [ ! -f "$DASHBOARD_DIR/server.js" ]; then
     info "Installing infra-dashboard (standalone)..."
