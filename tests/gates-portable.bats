@@ -66,8 +66,8 @@ setup() {
 
 # ─── Task-lock graceful skip ───
 
-@test "no task-lock references in prepare-commit-msg (removed in physicalize)" {
-  ! grep -q 'task.lock\|task-start\|task-selftest' "$HOOKS_DIR/prepare-commit-msg"
+@test "spec lifecycle uses .task-lock for auto-advance" {
+  grep -q 'task-lock' "$HOOKS_DIR/prepare-commit-msg"
 }
 
 # ─── Gate 2.1: Spec status check ───

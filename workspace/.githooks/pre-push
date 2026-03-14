@@ -67,8 +67,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   # Gate 2: Cumulative impl file check (anti-salami-slicing)
   # Skip for workspace repos — mostly scripts/config, not product code
-  if [[ $WORKSPACE_MODE -eq 0 ]]; then
-  impl_count=$(git log --no-merges --format="" --name-only --invert-grep -E --grep="^(backup|journal):" "$range" 2>/dev/null | grep -E '\.(sh|ts|tsx|js|jsx|py|go|rs)$' | sort -u | wc -l || true)
+  # Exception: .githooks/ changes always enforce (even in workspace mode)
+  hooks_changed=0
+  for f in "${changed_files[@]+${changed_files[@]}}"; do
+    case "$f" in .githooks/*) hooks_changed=1; break ;; esac
+  done
+  if [[ $WORKSPACE_MODE -eq 0 ]] || [[ $hooks_changed -eq 1 ]]; then
+  impl_count=$(git diff --name-only "$range" 2>/dev/null | grep -E '\.(sh|ts|tsx|js|jsx|py|go|rs)$' | sort -u | wc -l || true)
   impl_count=$(echo "$impl_count" | tr -d ' ')  # trim whitespace from wc
 
   repo_root="$(git rev-parse --show-toplevel)"
@@ -96,20 +101,21 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       fi
     fi
   fi
-  fi  # end WORKSPACE_MODE gate 2 skip
+  fi  # end WORKSPACE_MODE gate 2
 
   # Gate 3: Pre-commit trailer check (catch hook bypasses)
   # v2: verifies tree-hash anti-forgery (2026-03-12, gates-hardening-v2)
-  # Skip for workspace repos — cron/subagent commits don't go through pre-commit
-  if [[ $WORKSPACE_MODE -eq 0 ]]; then
+  # Skip for workspace repos UNLESS .githooks/ changed (gate integrity)
+  if [[ $WORKSPACE_MODE -eq 0 ]] || [[ $hooks_changed -eq 1 ]]; then
   g3_failed=0
   while IFS= read -r sha; do
     msg=$(git log -1 --format='%B' "$sha")
-    # Skip merge commits and backup/journal
-    first_line=$(echo "$msg" | head -1)
-    case "$first_line" in
-      Merge*|backup:*|journal:*) continue ;;
-    esac
+    # Skip actual merge commits (2+ parents), not just "Merge*" message prefix
+    parent_count=$(git rev-list --parents -n1 "$sha" 2>/dev/null | wc -w)
+    parent_count=$((parent_count - 1))  # subtract the commit itself
+    if [[ $parent_count -ge 2 ]]; then
+      continue
+    fi
     # Extract trailer value
     trailer_val=$(echo "$msg" | sed -n 's/^Pre-commit-gate: //p' | tail -1)
     if [[ -z "$trailer_val" ]]; then
@@ -237,7 +243,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         js_changed=$(git diff --name-only "$range" 2>/dev/null | grep -cE '\.(ts|tsx|js|jsx)$' || true)
         if [[ "$js_changed" -gt 0 ]]; then
           echo "  ⏳ [Gate 5] Running eslint..."
-          if g5_output=$(cd "$repo_root" && perl -e 'alarm 30; exec @ARGV' -- npx eslint --no-warn-ignored $(git diff --name-only "$range" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | tr '\n' ' ') 2>&1); then
+          if g5_output=$(cd "$repo_root" && perl -e 'alarm 30; exec @ARGV' -- npx eslint --no-warn-ignored $(git diff --name-only --diff-filter=ACMR "$range" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx)$' | tr '\n' ' ') 2>&1); then
             echo "  ✅ [Gate 5] ESLint passed"
             _tel hook-eslint pass
           else
@@ -260,6 +266,22 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
 
 done
+
+# ─── Project-specific sync (warn only, never block push) ───
+if [[ -x "$repo_root/scripts/sync-docs.sh" ]]; then
+  echo "  📄 [Docs sync] Running project docs sync..."
+  if bash "$repo_root/scripts/sync-docs.sh" 2>/dev/null; then
+    if ! git diff --quiet -- docs/ 2>/dev/null; then
+      echo "  ⚠️  docs/ changed by sync — remember to commit synced docs"
+    fi
+  fi
+  for acc in "$repo_root"/tasks/*-acceptance.md; do
+    [[ -f "$acc" ]] || continue
+    if grep -q '<!-- TODO' "$acc" 2>/dev/null; then
+      echo "  ⚠️  [Docs] $(basename "$acc") contains unfilled TODOs"
+    fi
+  done
+fi
 
 if [[ $failed -eq 1 ]]; then
   echo ""

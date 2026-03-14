@@ -28,13 +28,9 @@ if [[ -f "$repo_root/SOUL.md" || -f "$repo_root/HEARTBEAT.md" ]]; then
   WORKSPACE_MODE=1
 fi
 
-# Already has tree-hash trailer (v2) — skip re-processing
-# Exception: amend (COMMIT_SOURCE=commit) needs re-generation since tree may have changed
+# Strip any user-injected Pre-commit-gate trailer (anti-forgery: only this hook writes it)
+# For amends (COMMIT_SOURCE=commit), strip and regenerate since tree may have changed
 if grep -q '^Pre-commit-gate: ' "$COMMIT_MSG_FILE" 2>/dev/null; then
-  if [[ "$COMMIT_SOURCE" != "commit" ]]; then
-    exit 0
-  fi
-  # Amend: strip old trailer, will regenerate at the end
   sed -i '' '/^Pre-commit-gate: /d' "$COMMIT_MSG_FILE"
 fi
 
@@ -170,6 +166,53 @@ if [[ $impl_file_count -ge 2 && -d "$repo_root/tasks" ]]; then
         exit 1
       fi
       echo "  ✅ Spec gate: $spec_file (status verified)"
+
+      # ── Auto-advance spec lifecycle ──
+      # 1. First commit with [spec:X] → create .task-lock/slug.started + set Status: in_progress
+      lock_dir="$repo_root/.task-lock"
+      mkdir -p "$lock_dir"
+      if [[ ! -f "$lock_dir/${spec_ref}.started" ]]; then
+        echo "started=$(date '+%Y-%m-%d %H:%M:%S')" > "$lock_dir/${spec_ref}.started"
+        echo "spec=tasks/${spec_ref}.md" >> "$lock_dir/${spec_ref}.started"
+        # Update spec status from approved → in_progress
+        if head -10 "$spec_file" | grep -qi 'Status.*approved'; then
+          sed -i '' 's/`approved`/`in_progress`/' "$spec_file"
+          git add "$spec_file" "$lock_dir/${spec_ref}.started" 2>/dev/null || true
+          echo "  📍 Spec auto-advanced: approved → in_progress"
+        else
+          git add "$lock_dir/${spec_ref}.started" 2>/dev/null || true
+        fi
+      fi
+
+      # 2. Commit message contains "delivered" → create .task-lock/slug.delivered + set Status: delivered
+      if echo "$commit_msg_line" | grep -qi 'deliver'; then
+        if [[ ! -f "$lock_dir/${spec_ref}.delivered" ]]; then
+          echo "delivered=$(date '+%Y-%m-%d %H:%M:%S')" > "$lock_dir/${spec_ref}.delivered"
+          echo "spec=tasks/${spec_ref}.md" >> "$lock_dir/${spec_ref}.delivered"
+          echo "receipt=$(git rev-parse --short HEAD 2>/dev/null || echo 'pending')" >> "$lock_dir/${spec_ref}.delivered"
+          # Update spec status → delivered
+          sed -i '' 's/`in_progress`/`delivered`/;s/`approved`/`delivered`/;s/`done`/`delivered`/' "$spec_file"
+          git add "$spec_file" "$lock_dir/${spec_ref}.delivered" 2>/dev/null || true
+          echo "  📦 Spec auto-advanced: → delivered"
+
+          # Auto-generate acceptance report if generate-acceptance.sh exists
+          # Extract step id from spec frontmatter (e.g. "S6b") or filename fallback
+          local step_id
+          step_id=$(grep -m1 '^\*\*Step\|^step:' "$spec_file" 2>/dev/null | sed 's/.*[Ss]\([0-9][0-9a-z]*\).*/s\1/' | tr '[:upper:]' '[:lower:]' || echo "")
+          if [[ -z "$step_id" ]]; then
+            # Fallback: extract from spec title line "# SPEC: S6b —"
+            step_id=$(head -1 "$spec_file" | sed -n 's/.*[Ss]\([0-9][0-9a-z]*\).*/s\1/p' | tr '[:upper:]' '[:lower:]' || echo "")
+          fi
+          if [[ -n "$step_id" && -x "$repo_root/scripts/generate-acceptance.sh" ]]; then
+            bash "$repo_root/scripts/generate-acceptance.sh" "$step_id" "$spec_file" 2>/dev/null || true
+            if [[ -f "tasks/${step_id}-acceptance.md" ]]; then
+              git add "tasks/${step_id}-acceptance.md" 2>/dev/null || true
+              echo "  📋 Acceptance report auto-generated: ${step_id}-acceptance.md"
+            fi
+          fi
+        fi
+      fi
+
       _tel hook-spec pass
       ;;
   esac
@@ -247,13 +290,9 @@ if [[ ${#staged_sh[@]} -gt 0 ]] && command -v shellcheck &>/dev/null; then
   shellcheck_failed=0
   for f in "${staged_sh[@]}"; do
     if [[ -f "$f" ]] && ! shellcheck -S warning "$f" 2>&1; then
-      if [[ $WORKSPACE_MODE -eq 1 ]]; then
-        echo "   ⚠️  $f (workspace: warn only)"
-      else
-        echo "   ❌ $f"
-        shellcheck_failed=1
-        failed=1
-      fi
+      echo "   ❌ $f"
+      shellcheck_failed=1
+      failed=1
     fi
   done
   if [[ $shellcheck_failed -eq 1 ]]; then
@@ -296,24 +335,7 @@ if [[ ${#staged_json[@]} -gt 0 || ${#staged_yml[@]} -gt 0 ]]; then
   fi
 fi
 
-# Gate 4: Prompt CHANGELOG — prompt files changed → CHANGELOG must be staged too
-prompt_changed=0
-changelog_changed=0
-while IFS= read -r f; do
-  [[ -z "$f" ]] && continue
-  case "$f" in
-    prompts/cron/*.prompt.md|prompts/*.prompt.md) prompt_changed=1 ;;
-    prompts/CHANGELOG.md) changelog_changed=1 ;;
-  esac
-done < <(git diff --cached --name-only --diff-filter=ACMRD)
-
-if [[ $prompt_changed -eq 1 && $changelog_changed -eq 0 ]]; then
-  echo ""
-  echo "⛔ COMMIT BLOCKED — 改了 prompt 但没更新 CHANGELOG"
-  echo "  prompts/CHANGELOG.md 未在 staged files 中。"
-  echo "  格式: - [YYYY-MM-DD] <job-slug> <version> — <变更摘要>"
-  failed=1
-fi
+# Gate 4: (Removed — Prompt CHANGELOG check is already in Gate 0 above)
 
 if [[ $failed -eq 1 ]]; then
   echo ""

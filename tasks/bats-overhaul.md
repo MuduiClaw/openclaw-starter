@@ -1,5 +1,5 @@
 # Spec: bats-overhaul
-Status: approved
+Status: done
 
 ## 目标
 修复 ClawKing 所有 15 个 bats 测试失败 + 添加 CI

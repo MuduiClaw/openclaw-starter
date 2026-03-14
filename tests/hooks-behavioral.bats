@@ -162,3 +162,36 @@ teardown() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"Invalid YAML"* ]]
 }
+
+# ─── Security: anti-forgery tests ───
+
+@test "injected Pre-commit-gate trailer is stripped and regenerated" {
+  cd "$SANDBOX"
+  printf '#!/bin/bash\necho "legit"\n' > app.sh
+  git add app.sh
+  # Attempt to inject a fake tree-hash trailer via -m
+  fake_hash="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  run env REVIEWED=1 git commit -m "feat: inject trailer" -m "Pre-commit-gate: $fake_hash" 2>&1
+  [ "$status" -eq 0 ]
+  # The real trailer should be the actual tree hash, NOT our injected one
+  trailer=$(git log -1 --format='%B' | grep 'Pre-commit-gate:' | awk '{print $2}')
+  [ "$trailer" != "$fake_hash" ]
+  actual=$(git rev-parse HEAD^{tree})
+  [ "$trailer" = "$actual" ]
+}
+
+@test "amend regenerates tree-hash trailer" {
+  cd "$SANDBOX"
+  printf '#!/bin/bash\necho "v1"\n' > app.sh
+  git add app.sh
+  env REVIEWED=1 git commit -q -m "feat: v1" 2>/dev/null
+  old_trailer=$(git log -1 --format='%B' | grep 'Pre-commit-gate:' | awk '{print $2}')
+  # Amend with different content
+  printf '#!/bin/bash\necho "v2"\n' > app.sh
+  git add app.sh
+  env REVIEWED=1 git commit -q --amend -m "feat: v2" 2>/dev/null
+  new_trailer=$(git log -1 --format='%B' | grep 'Pre-commit-gate:' | awk '{print $2}')
+  actual=$(git rev-parse HEAD^{tree})
+  [ "$new_trailer" = "$actual" ]
+  [ "$new_trailer" != "$old_trailer" ]
+}
