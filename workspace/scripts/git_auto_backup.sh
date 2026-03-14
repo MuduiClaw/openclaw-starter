@@ -58,17 +58,21 @@ backup_repo() {
         return 1
     fi
     
-    local CHANGED_FILES=$(git status --porcelain 2>/dev/null)
-    local CHANGES=$(echo "$CHANGED_FILES" | grep -c '[^ ]' || true)
+    local CHANGED_FILES
+    CHANGED_FILES=$(git status --porcelain 2>/dev/null)
+    local CHANGES
+    CHANGES=$(echo "$CHANGED_FILES" | grep -c '[^ ]' || true)
     if [ "$CHANGES" = "0" ]; then
         log "$NAME: 无变更，跳过"
         return 0
     fi
     
     # Build descriptive commit message: list changed dirs/files
-    local SUMMARY=$(echo "$CHANGED_FILES" | awk '{print $2}' | sed 's|/.*||' | sort -u | head -5 | tr '\n' ', ' | sed 's/,$//')
+    local SUMMARY
+    SUMMARY=$(echo "$CHANGED_FILES" | awk '{print $2}' | sed 's|/.*||' | sort -u | head -5 | tr '\n' ', ' | sed 's/,$//')
     local EXTRA=""
-    local DIR_COUNT=$(echo "$CHANGED_FILES" | awk '{print $2}' | sed 's|/.*||' | sort -u | wc -l | tr -d ' ')
+    local DIR_COUNT
+    DIR_COUNT=$(echo "$CHANGED_FILES" | awk '{print $2}' | sed 's|/.*||' | sort -u | wc -l | tr -d ' ')
     if [ "$DIR_COUNT" -gt 5 ]; then
         EXTRA=" +$((DIR_COUNT - 5)) more"
     fi

@@ -11,6 +11,7 @@ find_fleet_repos() {
   legacy_projects="$HOME/projects"
 
   local cands=("$workspace_root")
+  # shellcheck disable=SC2043  # template: users add their own projects here
   for p in infra-dashboard ; do
     [[ -e "$primary_projects/$p/.git" ]] && cands+=("$primary_projects/$p")
     [[ -e "$legacy_projects/$p/.git" ]] && cands+=("$legacy_projects/$p")

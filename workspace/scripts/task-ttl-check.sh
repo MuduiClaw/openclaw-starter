@@ -33,7 +33,6 @@ for ((i=0; i<count; i++)); do
   status=$(jq -r ".[$i].status" "$BACKLOG")
   [[ "$status" == "done" || "$status" == "expired" ]] && continue
 
-  id=$(jq -r ".[$i].id" "$BACKLOG")
   title=$(jq -r ".[$i].title" "$BACKLOG")
   ttl=$(jq -r ".[$i].ttl_days" "$BACKLOG")
   last_touched=$(jq -r ".[$i].last_touched" "$BACKLOG")

@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
@@ -20,5 +20,6 @@ jobs:
       - name: Shellcheck scripts
         run: |
           brew install shellcheck
-          shellcheck scripts/*.sh setup.sh bootstrap.sh sync-to-template.sh \
-            workspace/scripts/*.sh .githooks/*.sh 2>&1 || true
+          shellcheck --severity=warning \
+            scripts/*.sh setup.sh sync-to-template.sh \
+            workspace/scripts/*.sh .githooks/*.sh
