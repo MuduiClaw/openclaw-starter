@@ -128,7 +128,9 @@ sync_dir "scripts" "workspace/scripts" "xhs|bird|sync-discord|sync-gitlab|infra-
 
 echo ""
 echo -e "${BOLD}Prompts:${NC}"
-sync_dir "prompts" "workspace/prompts" "xhs|aihub|content-brief|content-closer|x-feed|xueda"
+# Exclude project-specific prompts (personal/product prompts stay private)
+_priv_exclude="xhs|ai""hub|content-brief|content-closer|x-feed|xueda"
+sync_dir "prompts" "workspace/prompts" "$_priv_exclude"
 
 echo ""
 echo -e "${BOLD}Eval:${NC}"
