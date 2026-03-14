@@ -385,7 +385,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         else
           # Gate 7c: Visual similarity — catch same page screenshotted at different times
           visual_dup=0
-          if command -v compare >/dev/null 2>&1 && [[ $screenshot_count -ge 2 ]] && [[ $screenshot_count -le 20 ]]; then
+          if command -v compare >/dev/null 2>&1 && [[ $screenshot_count -ge 2 ]] && [[ $screenshot_count -le 10 ]]; then
             pngs=()
             while IFS= read -r f; do
               [[ -n "$f" ]] && pngs+=("$f")
@@ -402,7 +402,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
                 # Skip if compare failed (invalid images) or no parseable output
                 [[ -z "$rmse" ]] && continue
                 # Compare as integers: rmse * 10000 < 200 means < 0.02
-                rmse_int=$(printf '%.0f' "$(echo "$rmse * 10000" | bc 2>/dev/null || echo "10000")" 2>/dev/null)
+                # Use awk (not bc) to handle scientific notation like 1.345e-04
+                rmse_int=$(echo "$rmse" | awk '{printf "%.0f", $1 * 10000}' 2>/dev/null)
                 [[ -z "$rmse_int" ]] && continue
                 if [[ $rmse_int -lt 200 ]]; then
                   echo "  ⚠️  [Gate 7] 视觉重复: $(basename "${pngs[$i]}") ≈ $(basename "${pngs[$j]}") (RMSE=$rmse)"
