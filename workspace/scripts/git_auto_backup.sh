@@ -142,7 +142,7 @@ _sync_recovery_assets() {
     # LaunchAgents (custom only)
     local LA_DST="$CLAWD/scripts/launchagents"
     [ -d "$LA_DST" ] || mkdir -p "$LA_DST"
-    for f in "$HOME_DIR/Library/LaunchAgents"/com.{YOUR_USERNAME,openclaw,cloudflare,openclaw}*.plist; do
+    for f in "$HOME_DIR/Library/LaunchAgents"/com.{"$USER",openclaw,cloudflare}*.plist; do
         [ -f "$f" ] && cp -f "$f" "$LA_DST/" 2>/dev/null
     done
 

@@ -47,6 +47,8 @@
 - Oracle R1 — Gate 6 vitest detection + Gate 7 simplify + deep-status bats test
 - Oracle audit — close 3 critical + 2 medium gate vulnerabilities
 - chmod +x sync-to-template.sh + sanitize private ref
+- remove redundant brew install + fix plist glob
+- CI shellcheck + macOS pinning + acceptance dir
 - repair all 15 bats failures + add CI
 
 ### 📖 文档（自动记录）
