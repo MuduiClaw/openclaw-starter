@@ -63,24 +63,24 @@ progress_done() {
 }
 
 get_dashboard_release_url() {
-  # Try ClawKing repo first (dashboard-v* tags), then infra-dashboard repo (v* tags)
+  # Primary: infra-dashboard repo (v* tags), Fallback: ClawKing repo (dashboard-v* tags)
   local tag=""
   if command -v gh &>/dev/null; then
-    # Source 1: ClawKing repo dashboard releases
-    tag=$(gh api repos/MuduiClaw/ClawKing/releases --jq '[.[] | select(.tag_name | startswith("dashboard-"))][0].tag_name' 2>/dev/null || echo "")
-    if [[ -n "$tag" ]]; then
-      echo "https://github.com/MuduiClaw/ClawKing/releases/download/${tag}/infra-dashboard-standalone.tar.gz"
-      return
-    fi
-    # Source 2: infra-dashboard repo releases
+    # Source 1: infra-dashboard repo (canonical)
     tag=$(gh api repos/MuduiClaw/infra-dashboard/releases/latest --jq '.tag_name' 2>/dev/null || echo "")
     if [[ -n "$tag" ]]; then
       echo "https://github.com/MuduiClaw/infra-dashboard/releases/download/${tag}/infra-dashboard-standalone.tar.gz"
       return
     fi
+    # Source 2: ClawKing repo (legacy)
+    tag=$(gh api repos/MuduiClaw/ClawKing/releases --jq '[.[] | select(.tag_name | startswith("dashboard-"))][0].tag_name' 2>/dev/null || echo "")
+    if [[ -n "$tag" ]]; then
+      echo "https://github.com/MuduiClaw/ClawKing/releases/download/${tag}/infra-dashboard-standalone.tar.gz"
+      return
+    fi
   fi
-  # Fallback
-  echo "https://github.com/MuduiClaw/ClawKing/releases/latest/download/infra-dashboard-standalone.tar.gz"
+  # Fallback (no gh CLI)
+  echo "https://github.com/MuduiClaw/infra-dashboard/releases/latest/download/infra-dashboard-standalone.tar.gz"
 }
 
 # --- Parse Flags ---

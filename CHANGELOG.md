@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+
+### 🐛 修复（自动记录）
+
+- dashboard download uses tag-based URL with dual-repo fallback, bump version display to v1.4.0
+
 ---
 
 ## [1.4.0] - 2026-03-15
