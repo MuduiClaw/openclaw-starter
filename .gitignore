@@ -1,31 +1,27 @@
-# Dependencies
-node_modules/
-.venv/
-__pycache__/
-*.pyc
 
+!*.env.example
 # Build
-.next/
-dist/
-.build/
-
+# Dependencies
+# IDE
+# Logs
 # OS
-.DS_Store
-Thumbs.db
-
+# Runtime
 # Secrets (should never be committed)
 *.env
-!*.env.example
-openclaw.json
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Logs
 *.log
-
-# Runtime
+*.pyc
+*.swo
+*.swp
+.DS_Store
+.build/
+.changelog-cursor
+.idea/
+.next/
 .openclaw/
+.venv/
+.vscode/
+Thumbs.db
+__pycache__/
+dist/
+node_modules/
+openclaw.json
