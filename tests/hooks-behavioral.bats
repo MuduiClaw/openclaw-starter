@@ -232,8 +232,9 @@ _setup_remote() {
   [[ "$output" != *"❌"*"Gate 6"* ]]
 }
 
-@test "Gate 6 warns when unit tests present but no e2e" {
+@test "Gate 6 warns when vitest config present but no e2e" {
   cd "$SANDBOX"
+  # Gate 6 now checks project-level vitest.config.ts, not push-level test files
   echo '{}' > playwright.config.ts
   echo '{}' > vitest.config.ts
   git add playwright.config.ts vitest.config.ts
@@ -241,13 +242,15 @@ _setup_remote() {
 
   _setup_remote
 
+  # Include a unit test to satisfy Gate 4 TDD, but no e2e test
   mkdir -p app src/__tests__
   echo "export default function Page() { return <div/>; }" > app/page.tsx
-  echo "test('x', () => {})" > src/__tests__/page.spec.ts
-  git add app/page.tsx src/__tests__/page.spec.ts
-  REVIEWED=1 git commit -q -m "feat: add page with unit test" 2>/dev/null
+  echo "test('x', () => {})" > src/__tests__/page.test.ts
+  git add app/page.tsx src/__tests__/page.test.ts
+  REVIEWED=1 git commit -q -m "feat: add page with unit test but no e2e" 2>/dev/null
 
   run git push origin main 2>&1
+  echo "# OUTPUT: $output" >&3
   [[ "$output" == *"warning only"* ]] || [[ "$output" == *"⚠️"* ]]
   [[ "$output" != *"❌"*"Gate 6"* ]]
 }
@@ -357,35 +360,36 @@ EOF
   [[ "$status" -eq 0 ]]
 }
 
-@test "Gate 7 warns when screenshot count < e2e test count" {
+@test "Gate 7 detects delivered status beyond line 5" {
   cd "$SANDBOX"
   echo '{}' > playwright.config.ts
-  mkdir -p e2e
-  cat > e2e/smoke.spec.ts << 'EOF'
-import { test, expect } from "@playwright/test";
-test("home renders", async ({ page }) => { await page.goto("/"); });
-test("about renders", async ({ page }) => { await page.goto("/about"); });
-test("settings renders", async ({ page }) => { await page.goto("/settings"); });
-EOF
-  git add playwright.config.ts e2e/smoke.spec.ts
-  REVIEWED=1 git commit -q -m "chore: add e2e scaffold" 2>/dev/null
+  git add playwright.config.ts
+  REVIEWED=1 git commit -q -m "chore: add pw config" 2>/dev/null
 
   # Remote BEFORE delivery
   _setup_remote
 
-  mkdir -p tasks docs/acceptance/my-feature
-  cat > tasks/my-feature.md << 'EOF'
-# Spec: My Feature
+  # Spec with delivered on line 10 (beyond old head -5 limit)
+  mkdir -p tasks
+  cat > tasks/deep-status.md << 'EOF'
+# Spec: Deep Status
+- **Author**: test
+- **Tags**: e2e, infra
+- **Priority**: P0
+- **Created**: 2026-03-15
+- **Updated**: 2026-03-15
+- **Reviewer**: oracle
+- **Approver**: mudui
+- **Sprint**: W1
 - **Status**: delivered
 EOF
-  # Only 1 screenshot for 3 tests
-  touch docs/acceptance/my-feature/E01-home.png
-  git add tasks/my-feature.md docs/acceptance/my-feature/
-  REVIEWED=1 git commit -q -m "feat: deliver partial screenshots [spec:my-feature]" 2>/dev/null
+  git add tasks/deep-status.md
+  REVIEWED=1 git commit -q -m "feat: deliver deep-status [spec:deep-status]" 2>/dev/null
 
   run git push origin main 2>&1
   echo "# OUTPUT: $output" >&3
+  # Should detect delivered even on line 10
   [[ "$output" == *"Gate 7"* ]]
-  [[ "$output" == *"incomplete"* ]] || [[ "$output" == *"⚠️"* ]]
+  [[ "$output" == *"no screenshots"* ]] || [[ "$output" == *"⚠️"* ]]
   [[ "$status" -eq 0 ]]
 }

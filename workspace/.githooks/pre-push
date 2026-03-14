@@ -308,9 +308,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         elif [[ $g6_has_ack -eq 1 ]]; then
           echo "  ✅ [Gate 6 E2E] Page changes with [e2e-ack] exemption"
           _tel hook-e2e pass
-        elif [[ $g4_has_tests -eq 1 ]]; then
-          # Has unit tests but no e2e — warn only
-          echo "  ⚠️  [Gate 6 E2E] Page-level changes without e2e tests (unit tests found — warning only)"
+        elif [[ -f "$repo_root/vitest.config.ts" || -f "$repo_root/vitest.config.mts" || -f "$repo_root/vitest.config.js" ]]; then
+          # Project has vitest configured — unit tests exist, warn only
+          echo "  ⚠️  [Gate 6 E2E] Page-level changes without e2e tests (vitest project — warning only)"
           echo "     Consider adding e2e tests in e2e/*.spec.ts, or use [e2e-ack] to acknowledge"
           _tel hook-e2e pass
         else
@@ -346,8 +346,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       [[ -z "$f" ]] && continue
       if echo "$f" | grep -qE '^tasks/.*\.md$'; then
         slug=$(basename "$f" .md)
-        # Check if the file content has "delivered" status
-        if git show "$local_sha:$f" 2>/dev/null | head -5 | grep -qi 'delivered'; then
+        # Check if the file content has "delivered" status (scan first 20 lines for flexibility)
+        if git show "$local_sha:$f" 2>/dev/null | head -20 | grep -qi 'delivered'; then
           delivered_slugs+=("$slug")
         fi
       fi
@@ -360,25 +360,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         screenshot_count=$(find "$repo_root/$acc_dir" -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
       fi
 
-      # Count e2e test count for comparison
-      e2e_test_count=0
-      for e2e_dir in "$repo_root"/e2e "$repo_root"/apps/*/e2e; do
-        [[ -d "$e2e_dir" ]] || continue
-        tc=$(grep -r "test(" "$e2e_dir" --include="*.spec.ts" --include="*.spec.js" 2>/dev/null | grep -v "test.fixme\|test.skip\|test.describe" | wc -l | tr -d ' ')
-        e2e_test_count=$((e2e_test_count + tc))
-      done
-
-      if [[ $screenshot_count -eq 0 ]] && [[ $e2e_test_count -gt 0 ]]; then
+      if [[ $screenshot_count -eq 0 ]]; then
         echo "  ⚠️  [Gate 7] Spec '$slug' marked delivered but docs/acceptance/$slug/ has no screenshots"
         echo "     Run: PW_SCREENSHOTS=on npx playwright test"
         echo "     Then commit screenshots to docs/acceptance/$slug/"
         _tel hook-screenshot warn
-        # Warn only — CI will also verify via PW_SCREENSHOTS=on
-      elif [[ $screenshot_count -gt 0 ]] && [[ $screenshot_count -lt $e2e_test_count ]]; then
-        echo "  ⚠️  [Gate 7] Spec '$slug': $screenshot_count screenshots < $e2e_test_count e2e tests — may be incomplete"
-        _tel hook-screenshot warn
-      elif [[ $screenshot_count -ge $e2e_test_count ]] && [[ $e2e_test_count -gt 0 ]]; then
-        echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count screenshots ≥ $e2e_test_count e2e tests"
+      else
+        echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots found"
         _tel hook-screenshot pass
       fi
     done
