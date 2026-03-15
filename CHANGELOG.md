@@ -71,6 +71,21 @@
 
 - add 3 behavioral tests for screenshot verification gate
 
+
+### ✨ 新功能（自动记录）
+
+- visual similarity check — ImageMagick RMSE dedup
+
+
+### 🐛 修复（自动记录）
+
+- Oracle R1 — awk replaces bc, cap 10 images
+
+
+### 🔧 维护（自动记录）
+
+- auto-generated tests (TDD gate remediation)
+
 ---
 
 ## [1.3.1] - 2026-03-11

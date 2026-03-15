@@ -360,11 +360,23 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         screenshot_count=$(find "$repo_root/$acc_dir" -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
       fi
 
-      if [[ $screenshot_count -eq 0 ]]; then
-        echo "  ⚠️  [Gate 7] Spec '$slug' marked delivered but docs/acceptance/$slug/ has no screenshots"
-        echo "     Run: PW_SCREENSHOTS=on npx playwright test"
-        echo "     Then commit screenshots to docs/acceptance/$slug/"
+      # Check for Showboat report.md as valid evidence
+      has_showboat_report=0
+      if [[ -f "$repo_root/$acc_dir/report.md" ]]; then
+        if grep -q 'showboat-id' "$repo_root/$acc_dir/report.md" 2>/dev/null; then
+          has_showboat_report=1
+        fi
+      fi
+
+      if [[ $screenshot_count -eq 0 ]] && [[ $has_showboat_report -eq 0 ]]; then
+        echo "  ⚠️  [Gate 7] Spec '$slug' marked delivered but docs/acceptance/$slug/ has no evidence"
+        echo "     Either: PW_SCREENSHOTS=on npx playwright test (screenshots)"
+        echo "     Or:     bash scripts/showboat-report.sh $slug (command-level report)"
         _tel hook-screenshot warn
+      elif [[ $screenshot_count -eq 0 ]] && [[ $has_showboat_report -eq 1 ]]; then
+        # Pure script/API task — showboat report is sufficient
+        echo "  ✅ [Gate 7] Spec '$slug': showboat report.md (command-level evidence)"
+        _tel hook-screenshot pass
       else
         # Gate 7b: Dedup check — catch identical screenshots used to fake coverage
         unique_count=$screenshot_count

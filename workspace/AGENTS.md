@@ -86,6 +86,13 @@
 
 ---
 
+## 验收证据
+- **所有任务** → `showboat exec` 记录命令+输出到 `docs/acceptance/<slug>/report.md`（ClawKing 是纯脚本项目，showboat report 是主要证据格式）
+- **验收命令**：`showboat verify docs/acceptance/<slug>/report.md`（exit 0 = 可信）
+- **初始化**：`bash ~/clawd/scripts/showboat-report.sh <slug> .`
+
+---
+
 ## 派发 Coding Agent
 
 > spawn subagent / ACP coding agent 前必须完成：
