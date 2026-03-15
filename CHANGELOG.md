@@ -11,6 +11,11 @@
 
 - dashboard download uses tag-based URL with dual-repo fallback, bump version display to v1.4.0
 
+
+### 🐛 修复（自动记录）
+
+- mixed task log mentions showboat report
+
 ---
 
 ## [1.4.0] - 2026-03-15

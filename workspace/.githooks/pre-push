@@ -173,9 +173,11 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    # Skip docs, configs, styles, assets, lockfiles
+    # Skip docs, configs, styles, assets, lockfiles, dotfiles
     echo "$f" | grep -qE '\.(md|txt|rst|adoc|mdx|json|ya?ml|toml|ini|env|css|scss|sass|less|svg|png|jpg|gif|ico|woff2?|eot|ttf)$' && continue
     echo "$f" | grep -qE '(package-lock|yarn\.lock|pnpm-lock|Cargo\.lock|poetry\.lock|go\.sum)' && continue
+    echo "$f" | grep -qE '(^|/)\.git(keep|ignore|attributes)$' && continue
+    echo "$f" | grep -qE '(^|/)(CHANGELOG|LICENSE|README|AGENTS|IDENTITY|MEMORY|SOUL|TOOLS|USER|HEARTBEAT|BOOTSTRAP)(\.md)?$' && continue
     # Test file?
     if echo "$f" | grep -qE '(\.|_)(test|spec)\.[^/]+$|^(tests|__tests__|test|spec)/|^test_[^/]+\.[^/]+$|\.bats$'; then
       g4_has_tests=1
