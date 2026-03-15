@@ -210,6 +210,13 @@ if $UPDATE_DASHBOARD; then
 
   step "📦" "Updating infra-dashboard"
 
+  # Guard: refuse to overwrite a source repo (has .git + no root server.js)
+  if [ -d "$DASHBOARD_DIR/.git" ] && [ ! -f "$DASHBOARD_DIR/server.js" ]; then
+    warn "Detected source repo at $DASHBOARD_DIR (has .git), skipping standalone update"
+    warn "Use autodeploy or 'cd $DASHBOARD_DIR && git pull && npm run build' instead"
+    exit 0
+  fi
+
   # Backup current version
   if [ -d "$DASHBOARD_DIR" ] && [ -f "$DASHBOARD_DIR/server.js" ]; then
     BACKUP="${DASHBOARD_DIR}.bak.$(date +%Y%m%d%H%M)"
@@ -1496,7 +1503,10 @@ if ! $SKIP_DASHBOARD; then
   DASHBOARD_DIR="${HOME}/projects/infra-dashboard"
   DASHBOARD_RELEASE_URL="$(get_dashboard_release_url)"
 
-  if [ ! -d "$DASHBOARD_DIR" ] || [ ! -f "$DASHBOARD_DIR/server.js" ]; then
+  # Skip if this is a source repo (developer machine with autodeploy)
+  if [ -d "$DASHBOARD_DIR/.git" ] && [ ! -f "$DASHBOARD_DIR/server.js" ]; then
+    success "infra-dashboard (source repo detected, managed by autodeploy)"
+  elif [ ! -d "$DASHBOARD_DIR" ] || [ ! -f "$DASHBOARD_DIR/server.js" ]; then
     info "Installing infra-dashboard (standalone)..."
     mkdir -p "$DASHBOARD_DIR"
 
