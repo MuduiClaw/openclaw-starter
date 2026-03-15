@@ -429,7 +429,11 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             _tel hook-screenshot-visual-dedup warn
             failed=1
           else
-            echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots ($unique_count unique)"
+            if [[ $has_showboat_report -eq 1 ]]; then
+              echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count screenshots ($unique_count unique) + showboat report.md"
+            else
+              echo "  ✅ [Gate 7] Spec '$slug': $screenshot_count acceptance screenshots ($unique_count unique)"
+            fi
             _tel hook-screenshot pass
           fi
         fi
